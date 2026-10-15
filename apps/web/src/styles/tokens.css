@@ -44,6 +44,22 @@
 
   --shadow-panel: 0 1px 2px rgba(20, 26, 36, 0.04);
 
+  /* 登录页：照片加载前的兜底色，以及压在照片上的压暗层。
+     两层渐变是有意的：横向压暗左侧文字区、纵向压暗底部，
+     保证白字在浅色照片上也有足够对比（原型实测文字区约 12:1）。 */
+  --c-photo-fallback: #232a36;
+  --scrim-photo: linear-gradient(
+      100deg,
+      rgba(15, 20, 29, 0.8) 0%,
+      rgba(15, 20, 29, 0.54) 44%,
+      rgba(15, 20, 29, 0.34) 100%
+    ),
+    linear-gradient(0deg, rgba(15, 20, 29, 0.72) 0%, rgba(15, 20, 29, 0) 46%);
+  /* 压暗层之上的文字颜色，不直接用 #fff 之外的颜色 */
+  --c-on-photo: #ffffff;
+  --c-on-photo-soft: rgba(255, 255, 255, 0.76);
+  --c-on-photo-faint: rgba(255, 255, 255, 0.68);
+
   /* 字体：中文优先走系统字重较全的家族，不依赖外部字体服务 */
   --font-ui: ui-sans-serif, 'Segoe UI Variable Text', 'Segoe UI', system-ui,
     -apple-system, 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei UI',

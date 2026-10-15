@@ -63,7 +63,6 @@ function renderSvg(code: string): string {
 
 export interface CaptchaResult {
   captchaId: string;
-  svg: string;
   enabled: boolean;
 }
 
@@ -78,16 +77,31 @@ export class CaptchaService {
     return this.sysConfig.getBool('auth.captcha.enabled', true);
   }
 
+  /**
+   * 只发 captchaId，**不发图形内容**。
+   *
+   * 图形另走 GET /auth/captcha/:id/image 以 image/svg+xml 返回。
+   * 这样验证码字符不会作为文本节点出现在页面 DOM 里——否则读屏软件和一段
+   * textContent 脚本都能直接把它读出来，验证码就形同虚设。
+   */
   async create(): Promise<CaptchaResult> {
     const enabled = await this.isEnabled();
     if (!enabled) {
-      return { captchaId: '', svg: '', enabled: false };
+      return { captchaId: '', enabled: false };
     }
 
     const code = randomCode(CAPTCHA_LENGTH);
     const captchaId = randomUUID();
     await this.redis.set(`${CAPTCHA_PREFIX}${captchaId}`, code.toLowerCase(), CAPTCHA_TTL_SECONDS);
-    return { captchaId, svg: renderSvg(code), enabled: true };
+    return { captchaId, enabled: true };
+  }
+
+  /** 按 captchaId 现渲染一张图。答案存在 Redis 里，这里只负责画。 */
+  async renderImage(captchaId: string): Promise<string | null> {
+    if (!/^[0-9a-f-]{36}$/i.test(captchaId)) return null;
+    const code = await this.redis.get(`${CAPTCHA_PREFIX}${captchaId}`);
+    if (code === null) return null;
+    return renderSvg(code.toUpperCase());
   }
 
   /** 校验并消费验证码。验证码关闭时直接放行。 */

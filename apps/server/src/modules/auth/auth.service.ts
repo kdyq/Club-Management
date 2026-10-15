@@ -20,6 +20,8 @@ import {
   MemberStatus,
   MEMBER_POSITION_LABEL,
   UserStatus,
+  type LoginVo,
+  type ProfileVo,
 } from '@club/shared';
 import { SysConfigService } from '../../common/config/sys-config.service.js';
 import { BizException } from '../../common/exceptions/biz.exception.js';
@@ -39,33 +41,8 @@ import { CaptchaService } from './captcha.service.js';
 import type { LoginDto } from './dto/login.dto.js';
 import type { AccessTokenPayload, RefreshTokenPayload } from './types/token-payload.js';
 
-/** 登录后返回给前端的资料。id 一律转成字符串，前端按 string 处理。 */
-export interface ProfileVo {
-  userId: string;
-  username: string;
-  realName: string;
-  avatarUrl: string | null;
-  memberId: string;
-  memberNo: string | null;
-  position: number;
-  positionLabel: string;
-  deptId: string | null;
-  deptName: string | null;
-  clubId: string;
-  clubName: string;
-  clubShortName: string | null;
-  termId: string;
-  termName: string;
-  roles: { id: string; code: string; name: string }[];
-  permissions: string[];
-  maxDataScope: number;
-}
-
-export interface LoginVo {
-  accessToken: string;
-  expiresIn: number;
-  profile: ProfileVo;
-}
+/** 响应类型定义在 @club/shared，前端直接用同一份；这里再导出一次方便本模块内部引用 */
+export type { LoginVo, ProfileVo } from '@club/shared';
 
 export interface LoginResult {
   vo: LoginVo;

@@ -1,4 +1,15 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Header,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { CurrentMember } from '../../common/decorators/current-member.decorator.js';
@@ -37,9 +48,29 @@ export class AuthController {
 
   @Public()
   @Get('captcha')
-  @ApiOperation({ summary: '获取图形验证码', description: '返回 SVG 与 captchaId，未开启时 enabled=false' })
+  @ApiOperation({
+    summary: '申请一个图形验证码',
+    description: '只返回 captchaId，图形另走 GET /auth/captcha/:id/image。',
+  })
   async captcha(): Promise<CaptchaResult> {
     return this.captchaService.create();
+  }
+
+  @Public()
+  @Get('captcha/:captchaId/image')
+  @Header('Content-Type', 'image/svg+xml')
+  @Header('Cache-Control', 'no-store, no-cache, must-revalidate')
+  @ApiOperation({ summary: '验证码图形', description: '以 SVG 图片返回，字符不会出现在页面 DOM 里。' })
+  async captchaImage(
+    @Param('captchaId') captchaId: string,
+    @Res() response: Response,
+  ): Promise<void> {
+    const svg = await this.captchaService.renderImage(captchaId);
+    if (svg === null) {
+      response.status(HttpStatus.NOT_FOUND).send('');
+      return;
+    }
+    response.status(HttpStatus.OK).send(svg);
   }
 
   @Public()

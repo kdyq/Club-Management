@@ -12,6 +12,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { MemberModule } from './modules/member/member.module.js';
 import { PermissionModule } from './modules/permission/permission.module.js';
 import { RoleModule } from './modules/role/role.module.js';
+import { StatsModule } from './modules/stats/stats.module.js';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { RoleModule } from './modules/role/role.module.js';
     MemberModule,
     RoleModule,
     PermissionModule,
+    StatsModule,
   ],
   controllers: [AppController],
   providers: [
