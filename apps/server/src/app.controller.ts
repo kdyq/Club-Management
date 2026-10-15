@@ -19,11 +19,11 @@ export class AppController {
     let club: string | null = null;
 
     try {
-      const rows = await this.prisma.$queryRaw<{ n: bigint }[]>`
+      const rows = await this.prisma.client.$queryRaw<{ n: bigint }[]>`
         SELECT COUNT(*) AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()
       `;
       tables = Number(rows[0]?.n ?? 0);
-      const found = await this.prisma.club.findFirst({ select: { name: true } });
+      const found = await this.prisma.client.club.findFirst({ select: { name: true } });
       club = found?.name ?? null;
       reachable = true;
     } catch {

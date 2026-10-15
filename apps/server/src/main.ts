@@ -4,18 +4,25 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor.js';
 import { traceIdMiddleware } from './common/middleware/trace-id.middleware.js';
+import { installBigIntJsonPatch } from './common/serialization/bigint-json.js';
 
 const logger = new Logger('Bootstrap');
 
 async function bootstrap(): Promise<void> {
+  // 必须在任何响应序列化之前装好，否则 BigInt 主键会让接口 500
+  installBigIntJsonPatch();
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.setGlobalPrefix('api');
   app.use(traceIdMiddleware);
+  // refresh token 走 httpOnly Cookie，需要解析
+  app.use(cookieParser());
 
   // DTO 用 class-validator 声明校验规则，这里统一开启；不要手写参数校验
   app.useGlobalPipes(
