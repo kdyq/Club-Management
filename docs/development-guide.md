@@ -199,6 +199,11 @@ npm run dev:web                     # 起前端，默认 5173
 上面是根 `package.json` 里的快捷脚本。工作区内的单个包用 npm 原生写法调用，
 例如 `npm run start:dev -w @club/server`。包名固定为 `@club/server`、`@club/web`、`@club/shared`。
 
+**Prisma 7 的连接配置。** 从 Prisma 7 起 `url` 不再写在 `schema.prisma` 的 `datasource` 里：
+迁移命令读仓库根目录的 `prisma.config.ts`（用 `env('DATABASE_URL')` 取 `.env` 的值），
+运行时由 `PrismaClient` 的 driver adapter 提供连接（MySQL 走 `@prisma/adapter-mariadb`）。
+`.env` 里 `DATABASE_URL` 的位置与 5.2 节一致，不需要改动。
+
 **改表的流程**：改 `schema.prisma` → `prisma validate` → `prisma format` →
 `prisma migrate dev --name 描述` → 提交迁移文件。**迁移文件必须入库**，
 它是别人（或未来的你）能跑起这个项目的唯一保证。
@@ -210,9 +215,9 @@ npm run dev:web                     # 起前端，默认 5173
 `docs/database-design.md` 是设计依据，`prisma/schema.prisma` 是它的代码化实现。
 两者如有出入，以 **schema.prisma 为准**，并回头更新设计文档。
 
-### 6.1 与设计文档的两处有意偏差
+### 6.1 与设计文档的三处有意偏差
 
-这两处是在写 schema 时发现的改进，已落地：
+这三处是在落地 schema 与迁移时发现的改进，已落地，且已回写 `database-design.md`：
 
 1. **`clubId` 是软引用，不建外键。** 设计文档原写「核心表建物理外键」。
    实测声明关系会让 `Club` 模型挂上 40 多个反向关系字段，可读性代价过大；
@@ -220,6 +225,12 @@ npm run dev:web                     # 起前端，默认 5173
    强制（见 7.5 节），外键不代替它。所以各业务模型只保留 `clubId` 列与索引。
 2. **`sys_config.clubId` 改为可空**，`null` 表示全局参数。原设计写「0 = 全局」，
    但 `0` 无法通过外键校验，可空语义更清楚。
+3. **树形结构的 `parentId` 一律可空，`null` 表示顶级。** 原设计写「`parent_id = 0`
+   = 顶级」，但 schema 为 `department` / `permission` / `fund_category` / `file_folder`
+   的自引用建了真实外键，`0` 没有对应行，插入时会被 MySQL 以 1452 拒绝（已实测）。
+   改为可空后外键得以保留，树的完整性仍然受保护；代价是查询顶级节点从
+   `parentId = 0` 变成 `parentId IS NULL`。这与「`deletedAt` 必须为 `0`」的规则不矛盾：
+   那条规则的依据是 MySQL 唯一索引不比较 `NULL`，而 `parentId` 上没有唯一索引。
 
 ### 6.2 状态字段用 Int，不用 Prisma enum
 

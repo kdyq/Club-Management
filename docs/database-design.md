@@ -266,13 +266,15 @@ club → term/department/role/permission → user → member → member_role/rol
 
 #### `department` 部门
 
-支持树形（部门下可挂小组），`parent_id = 0` 表示顶级部门。
+支持树形（部门下可挂小组），`parent_id IS NULL` 表示顶级部门。
+（原设计写「`parent_id = 0` 表示顶级」，落地时改为可空：`parent_id` 上有真实外键，
+`0` 不存在对应行会被 MySQL 拒绝，见开发文档 6.1 节。）
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | id | BIGINT UNSIGNED | PK |
 | club_id | BIGINT UNSIGNED | FK → club |
-| parent_id | BIGINT UNSIGNED | 上级部门，0 = 顶级 |
+| parent_id | BIGINT UNSIGNED NULL | 上级部门，NULL = 顶级 |
 | name | VARCHAR(32) | 如"技术部""宣传部" |
 | leader_member_id | BIGINT UNSIGNED | 负责人 member_id |
 | description | VARCHAR(255) | 职责说明 |
@@ -352,7 +354,7 @@ club → term/department/role/permission → user → member → member_role/rol
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | id | BIGINT UNSIGNED | PK |
-| parent_id | BIGINT UNSIGNED | 上级，0 = 顶级 |
+| parent_id | BIGINT UNSIGNED NULL | 上级，NULL = 顶级 |
 | name | VARCHAR(32) | 显示名 |
 | code | VARCHAR(64) | 权限标识，如 `member:create`，UNIQUE |
 | type | TINYINT | 1 目录 / 2 菜单 / 3 按钮·接口 |
@@ -619,7 +621,7 @@ club → term/department/role/permission → user → member → member_role/rol
 |---|---|---|
 | id | BIGINT UNSIGNED | PK |
 | club_id | BIGINT UNSIGNED | FK → club |
-| parent_id | BIGINT UNSIGNED | 上级科目，0 = 顶级 |
+| parent_id | BIGINT UNSIGNED NULL | 上级科目，NULL = 顶级 |
 | name | VARCHAR(32) | 会费 / 赞助 / 场地费 / 物料费 / 打印费 |
 | type | TINYINT | 1 收入科目 / 2 支出科目 |
 | sort | INT | 排序 |

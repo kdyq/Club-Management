@@ -27,6 +27,7 @@
     "db:seed": "npm run build:shared && prisma db seed"
   },
   "devDependencies": {
+    "dotenv": "^18.0.8",
     "prisma": "7.10.0",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3"

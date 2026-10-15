@@ -41,9 +41,10 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Prisma 7 起，连接串不再写在这里，改由 prisma.config.ts 提供给迁移命令，
+// 运行时由 PrismaClient 的 driver adapter 提供（见 apps/server 的 PrismaService）。
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")
 }
 
 // =============================================================================
@@ -120,7 +121,7 @@ model Term {
 model Department {
   id             BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
   clubId         BigInt  @map("club_id") @db.UnsignedBigInt
-  parentId       BigInt  @default(0) @map("parent_id") @db.UnsignedBigInt
+  parentId       BigInt?   @map("parent_id") @db.UnsignedBigInt
   name           String  @db.VarChar(32)
   leaderMemberId BigInt? @map("leader_member_id") @db.UnsignedBigInt
   description    String? @db.VarChar(255)
@@ -293,7 +294,7 @@ model Role {
 /// 权限点 / 菜单树。全局表，不带 clubId：权限点属于系统能力，角色才属于社团。
 model Permission {
   id        BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
-  parentId  BigInt  @default(0) @map("parent_id") @db.UnsignedBigInt
+  parentId  BigInt?   @map("parent_id") @db.UnsignedBigInt
   name      String  @db.VarChar(32)
   code      String  @unique @db.VarChar(64) // member:create
   type      Int     @default(2) // 1 目录 / 2 菜单 / 3 按钮与接口
@@ -730,7 +731,7 @@ model FundAccount {
 model FundCategory {
   id       BigInt @id @default(autoincrement()) @db.UnsignedBigInt
   clubId   BigInt @map("club_id") @db.UnsignedBigInt
-  parentId BigInt @default(0) @map("parent_id") @db.UnsignedBigInt
+  parentId BigInt?  @map("parent_id") @db.UnsignedBigInt
   name     String @db.VarChar(32)
   /// 1 收入科目 / 2 支出科目
   type     Int
@@ -968,7 +969,7 @@ model MessageChannelConfig {
 model FileFolder {
   id          BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
   clubId      BigInt  @map("club_id") @db.UnsignedBigInt
-  parentId    BigInt  @default(0) @map("parent_id") @db.UnsignedBigInt
+  parentId    BigInt?   @map("parent_id") @db.UnsignedBigInt
   name        String  @db.VarChar(64)
   /// 1 公开 / 2 成员 / 3 部门 / 4 角色 / 5 私有
   scope       Int     @default(2)
