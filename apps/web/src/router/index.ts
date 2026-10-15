@@ -84,10 +84,40 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '届次管理', icon: 'Calendar', perm: 'menu:term', group: '组织', order: 12 },
       },
       {
+        path: 'ops/duty',
+        name: 'duty',
+        component: () => import('@/views/ops/duty.vue'),
+        meta: { title: '值班表', icon: 'Clock', perm: 'menu:duty', group: '日常', order: 50 },
+      },
+      {
+        path: 'ops/assets',
+        name: 'assets',
+        component: () => import('@/views/ops/assets.vue'),
+        meta: { title: '物资管理', icon: 'Box', perm: 'menu:asset', group: '日常', order: 51 },
+      },
+      {
+        path: 'ops/venues',
+        name: 'venues',
+        component: () => import('@/views/ops/venues.vue'),
+        meta: { title: '场地预约', icon: 'House', perm: 'menu:venue', group: '日常', order: 52 },
+      },
+      {
+        path: 'announcements',
+        name: 'announcements',
+        component: () => import('@/views/ops/announcements.vue'),
+        meta: { title: '公告管理', icon: 'Bell', perm: 'menu:announcement', group: '日常', order: 53 },
+      },
+      {
+        path: 'notifications',
+        name: 'notifications',
+        component: () => import('@/views/notification/index.vue'),
+        // 人人都有收件箱，不看权限码
+        meta: { title: '站内信', icon: 'Message', group: '个人', order: 81 },
+      },
+      {
         path: 'profile',
         name: 'profile',
         component: () => import('@/views/profile/index.vue'),
-        // 不看权限码：每个人都能看自己的档案
         meta: { title: '我的档案', icon: 'Postcard', group: '个人', order: 80 },
       },
       {
