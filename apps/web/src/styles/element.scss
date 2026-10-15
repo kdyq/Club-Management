@@ -1,0 +1,86 @@
+/* =============================================================================
+ * element.scss —— Element Plus 主题覆盖（开发文档 9.3 节）
+ *
+ * Element Plus 2.x 的 --el-color-primary-light-N 是把主色与白色按 N*10% 混合
+ * 得到的。用 @forward ... with 让 EP 自己算，不要手写一串 light 变量，
+ * 否则升级 EP 后色阶会对不上。
+ *
+ * 色值取自 tokens.css，此处是唯一允许出现字面值的地方（因为 SCSS 变量
+ * 需要在编译期求值，读不到运行时的 CSS 变量）。
+ * ========================================================================== */
+
+@forward 'element-plus/theme-chalk/src/common/var.scss' with (
+  $colors: (
+    'primary': (
+      'base': #3553c6,
+    ),
+    'success': (
+      'base': #2f7d5c,
+    ),
+    'warning': (
+      'base': #9a6a11,
+    ),
+    'danger': (
+      'base': #b03a3a,
+    ),
+    'error': (
+      'base': #b03a3a,
+    ),
+    'info': (
+      'base': #66707f,
+    )
+  ),
+  $text-color: (
+    'primary': #141a24,
+    'regular': #4a5566,
+    'secondary': #66707f,
+    'placeholder': #66707f,
+    'disabled': #a3aab5
+  ),
+  $border-color: (
+    '': #e3e7ed,
+    'light': #e3e7ed,
+    'lighter': #edf0f4,
+    'extra-light': #f5f6f8,
+    'dark': #cbd2db,
+    'darker': #cbd2db
+  ),
+  $bg-color: (
+    '': #ffffff,
+    'page': #f5f6f8,
+    'overlay': #ffffff
+  ),
+  $fill-color: (
+    '': #f5f6f8,
+    'light': #fafbfc,
+    'lighter': #fafbfc,
+    'extra-light': #ffffff,
+    'dark': #e3e7ed,
+    'darker': #e3e7ed,
+    'blank': #ffffff
+  ),
+  $border-radius: (
+    'base': 8px,
+    'small': 6px,
+    'round': 20px,
+    'circle': 100%
+  )
+);
+
+@use 'element-plus/theme-chalk/src/index.scss' as *;
+
+/* EP 的默认值与本设计不一致、需要在运行时改的组件变量。
+   放在 @use 之后，保证覆盖生效。 */
+:root {
+  --el-font-family: var(--font-ui);
+  --el-font-size-base: 14px;
+  --el-card-border-radius: var(--r-container); /* EP 默认 4px */
+  --el-card-padding: var(--sp-5);
+  --el-border-radius-base: var(--r-control);
+  --el-border-radius-small: var(--r-tag);
+  --el-box-shadow-light: var(--shadow-panel);
+  --el-table-header-bg-color: var(--c-surface-sunken);
+  --el-table-header-text-color: var(--c-text-2);
+  --el-table-row-hover-bg-color: var(--c-surface-sunken);
+  --el-table-border-color: var(--c-border);
+}

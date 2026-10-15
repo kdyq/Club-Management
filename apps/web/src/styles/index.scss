@@ -1,0 +1,97 @@
+/* =============================================================================
+ * index.scss —— 全局基础样式。只写跨页面复用的东西，页面样式写在各自的 .vue 里。
+ * 本文件不出现颜色字面值，一律走 tokens.css 的变量。
+ * ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  /* 全高容器用 dvh 而不是 vh：iOS 地址栏会顶掉 100vh 的内容 */
+  min-height: 100dvh;
+}
+
+body {
+  background: var(--c-canvas);
+  color: var(--c-text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--c-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--c-accent-hover);
+}
+
+/* 数字一律等宽，避免表格与指标跳动 */
+.num,
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 所有交互元素有清晰的焦点描边（可访问性基线，开发文档 9.5 节） */
+:focus-visible {
+  outline: 2px solid var(--c-accent-ring);
+  outline-offset: 2px;
+}
+
+/* 表格：行高与内边距固定，渲染前后不跳动 */
+.el-table th.el-table__cell {
+  font-weight: 500;
+}
+
+/* 滚动条：细一些，颜色走中性灰 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--c-border-strong);
+  border-radius: var(--r-tag);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 动效降级：命中 prefers-reduced-motion 时全部折叠为静态 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
