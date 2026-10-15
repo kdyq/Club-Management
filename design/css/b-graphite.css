@@ -1,0 +1,366 @@
+/* ==========================================================================
+   方向 B · 石墨终端 (Graphite Terminal)
+   VARIANCE 6 / MOTION 6 / DENSITY 7   ·   深色锁定
+
+   读法：技术类社团（如计算机协会）自己的管理台，等宽数字、细线分隔、
+         信息密度高，气质接近开发工具而非通用后台。
+   配色：石墨近黑（不用纯黑）+ 一个祖母绿强调色，饱和度 52%。
+   形制：容器 6px / 控件 6px / 标签 4px，与方向 A 的圆润形成对比。
+   形制禁则：不加外发光、不加玻璃拟态。
+   结构层见 console.css，本文件负责 tokens 与该方向的形制覆盖。
+   ========================================================================== */
+
+.dir-b {
+  /* --- 中性色：中性石墨，底色刻意不用 #000 ---------------------------- */
+  --c-canvas: #0e1012;
+  --c-surface: #15181b;
+  --c-surface-sunken: #1b1f23;
+  --c-border: #262b30;
+  --c-border-strong: #363c43;
+
+  --c-text: #e6e9ec; /* 在 #15181b 上 14.6:1 */
+  --c-text-2: #9aa3ac; /* 在 #15181b 上 7.0:1 */
+  --c-text-3: #858e97; /* 在 #15181b 上 5.4:1，占位符同样达标 */
+
+  /* --- 唯一的强调色 --------------------------------------------------- */
+  --c-accent: #2fa37a; /* 在 #15181b 上 5.6:1 */
+  --c-accent-hover: #37b98a;
+  --c-accent-tint: rgba(47, 163, 122, 0.14);
+  --c-accent-ring: rgba(47, 163, 122, 0.26);
+  /* 深色底上强调色按钮用近黑字：6.1:1。白字在绿底上只有 3.2:1，不达标。 */
+  --c-on-accent: #0b0e10;
+
+  /* --- 语义色 --------------------------------------------------------- */
+  --c-ok: #3fbf8c; /* 在语义底色上 6.1:1 */
+  --c-ok-tint: rgba(63, 191, 140, 0.14);
+  --c-warn: #d9a544; /* 8.0:1 */
+  --c-warn-tint: rgba(217, 165, 68, 0.14);
+  --c-danger: #e0705f; /* 5.7:1 */
+  --c-danger-tint: rgba(224, 112, 95, 0.14);
+  --c-neutral-tint: rgba(255, 255, 255, 0.07);
+  --c-neutral-text: #9aa3ac; /* 在语义底色上 6.3:1 */
+
+  /* --- 结构件 --------------------------------------------------------- */
+  --c-photo-fallback: #0b0d0f;
+  --c-skeleton-a: #1b1f23;
+  --c-skeleton-b: #23282e;
+
+  --r-container: 6px;
+  --r-control: 6px;
+  --r-tag: 4px;
+  --r-avatar: 6px;
+
+  /* 深色界面不靠投影分层，靠边界与底色差 */
+  --shadow-panel: none;
+
+  /* 方向 B 的流水表用完整 ISO 日期，日期列需要更宽 */
+  --ledger-date-col: 100px;
+
+  --scrim: linear-gradient(
+      180deg,
+      rgba(8, 10, 12, 0.46) 0%,
+      rgba(8, 10, 12, 0.7) 52%,
+      rgba(8, 10, 12, 0.92) 100%
+    ),
+    radial-gradient(
+      120% 90% at 50% 10%,
+      rgba(47, 163, 122, 0.1) 0%,
+      rgba(8, 10, 12, 0) 62%
+    );
+}
+
+/* --------------------------------------------------------------------------
+   形制覆盖：等宽数字与更紧的密度
+   -------------------------------------------------------------------------- */
+
+/* 侧栏与顶栏压到画布色，让面板"浮"出来，层次靠底色差而非投影 */
+.dir-b .sidebar,
+.dir-b .topbar {
+  background: var(--c-canvas);
+}
+
+.dir-b .metric__value,
+.dir-b .ledger__amount,
+.dir-b .ledger__balance-value,
+.dir-b .dept__value,
+.dir-b .login__stat-value {
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+/* 密度 7：行高与内边距整体收紧 */
+.dir-b .table th {
+  padding: 8px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: transparent;
+}
+
+.dir-b .table td {
+  padding: 9px 14px;
+}
+
+.dir-b .panel__head {
+  padding: 11px var(--sp-4);
+}
+
+.dir-b .panel__title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-text-2);
+}
+
+.dir-b .sidebar__group-label,
+.dir-b .kicker {
+  font-family: var(--font-mono);
+}
+
+.dir-b .person__meta,
+.dir-b .activity-cell__cat,
+.dir-b .ledger__date {
+  font-family: var(--font-mono);
+}
+
+.dir-b .tag {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+/* 深色下骨架屏改用略亮的块 */
+.dir-b .progress-mini__track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* --------------------------------------------------------------------------
+   唯一的循环动效：报名进行中的实时指示点。
+   只用在真正有语义的位置（该活动此刻正在接收报名），不做装饰。
+   -------------------------------------------------------------------------- */
+.live-dot {
+  position: relative;
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex: none;
+  margin-right: var(--sp-2);
+  border-radius: 50%;
+  background: var(--c-ok);
+  vertical-align: middle;
+}
+
+.live-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--c-ok);
+  animation: live-pulse 2.1s ease-out infinite;
+}
+
+@keyframes live-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  70% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot::after {
+    animation: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   登录页：整幅实景照片 + 居中面板（与方向 A 的分栏结构刻意不同）
+   -------------------------------------------------------------------------- */
+.login-full {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100dvh - 44px);
+  padding: var(--sp-8) var(--sp-4);
+  overflow: hidden;
+  background: var(--c-photo-fallback);
+}
+
+.login-full__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.login-full__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+}
+
+.login-full__inner {
+  position: relative;
+  width: 100%;
+  max-width: 404px;
+}
+
+.login-full__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-6);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #fff;
+}
+
+.login-full__brand-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: var(--r-control);
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.login-card {
+  padding: var(--sp-6);
+  border: 1px solid var(--c-border);
+  border-top: 2px solid var(--c-accent);
+  border-radius: var(--r-container);
+  background: rgba(19, 22, 25, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* 不支持背景模糊时回退到实色，保证文字对比度不受影响 */
+@supports not (backdrop-filter: blur(4px)) {
+  .login-card {
+    background: #131619;
+  }
+}
+
+.login-card__title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: #fff;
+}
+
+.login-card__subtitle {
+  margin-top: var(--sp-1);
+  margin-bottom: var(--sp-6);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--c-text-2);
+}
+
+.login-card__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.login-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--sp-4);
+  font-size: 12.5px;
+}
+
+.login-card__submit {
+  width: 100%;
+  height: 40px;
+  margin-top: var(--sp-5);
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.login-full__foot {
+  margin-top: var(--sp-5);
+  font-size: 12px;
+  color: var(--c-text-3);
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   经费趋势：线条在滚入视口时被"读"出来
+   -------------------------------------------------------------------------- */
+.spark {
+  display: block;
+  width: 100%;
+  height: 150px;
+}
+
+.spark__area {
+  fill: var(--c-accent-tint);
+  stroke: none;
+}
+
+.spark__line {
+  fill: none;
+  stroke: var(--c-accent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.spark__dot {
+  fill: var(--c-canvas);
+  stroke: var(--c-accent);
+  stroke-width: 1.5;
+}
+
+.spark__axis {
+  stroke: var(--c-border);
+  stroke-width: 1;
+}
+
+.spark__months {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  margin-top: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--c-text-3);
+}
+
+.spark__months span:last-child {
+  text-align: right;
+}
+
+.spark__months span:nth-child(1) {
+  text-align: left;
+}
+
+.spark__months span {
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   响应式
+   -------------------------------------------------------------------------- */
+@media (max-width: 860px) {
+  .login-full__inner {
+    max-width: none;
+  }
+}

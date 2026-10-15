@@ -1,0 +1,387 @@
+/* ==========================================================================
+   base.css — 共享重置与原子组件
+   三个设计方向共用这一层，各自只覆盖 tokens 与布局结构。
+   ========================================================================== */
+
+:root {
+  /* 字体栈：中文优先走系统字重较全的家族，避免依赖外部字体服务 */
+  --font-ui: ui-sans-serif, "Segoe UI Variable Text", "Segoe UI", system-ui,
+    -apple-system, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei UI",
+    "Microsoft YaHei", sans-serif;
+  --font-mono: "Cascadia Mono", ui-monospace, "SF Mono", Consolas,
+    "JetBrains Mono", "Liberation Mono", monospace;
+
+  /* 间距标尺（4px 基准） */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* 层级：只用于系统级叠层，禁止随手 z-50 */
+  --z-base: 1;
+  --z-sticky: 20;
+  --z-drawer: 40;
+  --z-modal: 60;
+
+  /* 下方所有颜色/圆角由各方向覆盖 */
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.6;
+  background: var(--c-canvas);
+  color: var(--c-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+blockquote,
+dl,
+dd {
+  margin: 0;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+/* 数字一律等宽，避免滚动时列宽跳动 */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.screen {
+  display: none;
+}
+
+/* hidden 属性必须能压住作者样式里的 display，否则行内错误、空状态等藏不住 */
+[hidden] {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   原型外壳（评审用的切换条，不属于设计本身，三个方向共用）
+   -------------------------------------------------------------------------- */
+.proto-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 44px;
+  padding: 0 var(--sp-4);
+  background: #1b2029;
+  color: #c9d1dc;
+  font-size: 12px;
+}
+
+.proto-bar__label {
+  margin-right: var(--sp-2);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #8e99a8;
+}
+
+.proto-bar__btn {
+  height: 26px;
+  padding: 0 var(--sp-3);
+  border-radius: 6px;
+  border: 1px solid transparent;
+  color: #c9d1dc;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.proto-bar__btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.proto-bar__btn[aria-current="true"] {
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+}
+
+.proto-bar__spacer {
+  flex: 1;
+}
+
+.proto-bar__meta {
+  color: #8e99a8;
+  font-size: 12px;
+}
+
+.proto-bar__back {
+  color: #8e99a8;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.proto-bar__back:hover {
+  color: #fff;
+}
+
+.screen.is-active {
+  display: block;
+}
+
+/* 视图切换（管理后台内部） */
+.view {
+  display: none;
+}
+
+.view.is-active {
+  display: block;
+}
+
+/* 无障碍：仅供读屏，不占视觉空间 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   原子组件
+   -------------------------------------------------------------------------- */
+
+/* 按钮：主按钮对比度必须过 WCAG AA，标签一律单行不折行 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  height: 36px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-control);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  transition: background-color 0.18s ease, border-color 0.18s ease,
+    color 0.18s ease, transform 0.12s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn--primary {
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+}
+
+.btn--primary:hover {
+  background: var(--c-accent-hover);
+}
+
+.btn--ghost {
+  border-color: var(--c-border);
+  color: var(--c-text-2);
+  background: var(--c-surface);
+}
+
+.btn--ghost:hover {
+  border-color: var(--c-border-strong);
+  color: var(--c-text);
+}
+
+.btn--sm {
+  height: 30px;
+  padding: 0 var(--sp-3);
+  font-size: 12px;
+}
+
+/* 状态标签：语义色只用于表达状态，不做装饰 */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-tag);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* 姓氏首字头像：工整、不依赖外部图片、不会撞到通用占位图 */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-avatar);
+  font-size: 13px;
+  font-weight: 600;
+  user-select: none;
+}
+
+/* 输入框：标签在上，占位符对比度不能低于正文太多 */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.field__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-2);
+}
+
+.input {
+  height: 40px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-control);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-size: 14px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.input::placeholder {
+  color: var(--c-text-3);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 3px var(--c-accent-ring);
+}
+
+/* 表头小标签：全站在此统一，避免每个区块都加一条眉标 */
+.kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-3);
+}
+
+/* 空 / 加载状态：原型里真实可触发，不是贴图 */
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-12) var(--sp-6);
+  text-align: center;
+}
+
+.state__title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.state__desc {
+  font-size: 13px;
+  color: var(--c-text-2);
+  max-width: 34ch;
+}
+
+.skeleton {
+  border-radius: var(--r-control);
+  background: linear-gradient(
+    90deg,
+    var(--c-skeleton-a) 0%,
+    var(--c-skeleton-b) 50%,
+    var(--c-skeleton-a) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s linear infinite;
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* 尊重系统降低动态偏好：所有动画在此折叠为静态 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .skeleton {
+    background: var(--c-skeleton-a);
+  }
+}

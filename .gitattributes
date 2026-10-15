@@ -1,0 +1,12 @@
+# 文本文件以 LF 存入仓库，检出时按平台转换，避免换行噪音
+* text=auto
+
+# 二进制资源不做换行转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary

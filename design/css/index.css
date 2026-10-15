@@ -1,0 +1,447 @@
+/* ==========================================================================
+   index.css — 方向对比总览页
+   这个页面本身也按设计规范来写，作为「方案说明页」的样式基准。
+   中性灰 + 单一强调色（沿用方向 C 的赭红，作为方案集的主色）。
+   ========================================================================== */
+
+.dir-index {
+  --c-canvas: #f8f8f7;
+  --c-surface: #ffffff;
+  --c-surface-sunken: #f2f2f0;
+  --c-border: #e6e6e3;
+  --c-border-strong: #d2d2ce;
+
+  --c-text: #141413;
+  --c-text-2: #575753;
+  --c-text-3: #6e6e68;
+
+  --c-accent: #b34a26;
+  --c-accent-hover: #9c3f1f;
+  --c-accent-tint: #fbeee8;
+  --c-accent-ring: rgba(179, 74, 38, 0.18);
+  --c-on-accent: #ffffff;
+
+  --c-neutral-tint: #eeeee9;
+  --c-neutral-text: #4f4f4a;
+  --c-skeleton-a: #ecece8;
+  --c-skeleton-b: #f6f6f3;
+  --c-photo-fallback: #d9d9d4;
+
+  --r-container: 16px;
+  --r-control: 999px;
+  --r-tag: 999px;
+  --r-avatar: 999px;
+
+  --shadow-panel: 0 1px 2px rgba(20, 20, 19, 0.03),
+    0 10px 28px -16px rgba(20, 20, 19, 0.12);
+  --shadow-lift: 0 2px 4px rgba(20, 20, 19, 0.04),
+    0 16px 34px -18px rgba(20, 20, 19, 0.18);
+}
+
+/* --------------------------------------------------------------------------
+   顶部
+   -------------------------------------------------------------------------- */
+.hero {
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface);
+}
+
+.hero__inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: var(--sp-12) var(--sp-6) var(--sp-10);
+}
+
+.hero__eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-accent);
+}
+
+.hero__title {
+  margin-top: var(--sp-4);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  max-width: 20ch;
+  text-wrap: balance;
+}
+
+.hero__desc {
+  margin-top: var(--sp-5);
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--c-text-2);
+  max-width: 62ch;
+}
+
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 var(--sp-6) var(--sp-16);
+}
+
+/* --------------------------------------------------------------------------
+   三个方向卡片
+   -------------------------------------------------------------------------- */
+.directions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  margin-top: var(--sp-10);
+}
+
+.dir-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 0;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-container);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+}
+
+/* 截图区：内部按原始宽度摆放，再整体缩放，视觉上等同真实浏览器窗口 */
+.dir-card__shot {
+  position: relative;
+  overflow: hidden;
+  background: var(--c-surface-sunken);
+  border-right: 1px solid var(--c-border);
+  min-height: 340px;
+}
+
+.dir-card__shot img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* base.css 里的 max-width:100% 会把原始宽度压窄，这里必须放开 */
+  width: 1440px;
+  max-width: none;
+  height: 940px;
+  transform: scale(0.415);
+  transform-origin: top left;
+  border: none;
+}
+
+.dir-card__body {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-6);
+}
+
+.dir-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.dir-card__name {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.dir-card__badge {
+  height: 22px;
+  padding: 0 var(--sp-3);
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--r-tag);
+  background: var(--c-neutral-tint);
+  color: var(--c-neutral-text);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.dir-card__badge--dark {
+  background: #1b1f23;
+  color: #c3cbd3;
+}
+
+.dir-card__desc {
+  margin-top: var(--sp-3);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--c-text-2);
+}
+
+.spec {
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-5);
+  border-top: 1px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.spec > div {
+  display: grid;
+  grid-template-columns: 5.5em minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: baseline;
+}
+
+.spec dt {
+  font-size: 12.5px;
+  color: var(--c-text-3);
+}
+
+.spec dd {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.dir-card__fit {
+  margin-top: var(--sp-5);
+  padding: var(--sp-4);
+  border-radius: var(--r-container);
+  background: var(--c-accent-tint);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--c-text-2);
+}
+
+.dir-card__fit strong {
+  color: var(--c-accent);
+}
+
+.dir-card__actions {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-5);
+  border-top: 1px solid var(--c-border);
+  margin-top: auto;
+}
+
+/* --------------------------------------------------------------------------
+   区块
+   -------------------------------------------------------------------------- */
+.block {
+  margin-top: var(--sp-16);
+}
+
+.block__title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.block__desc {
+  margin-top: var(--sp-3);
+  margin-bottom: var(--sp-6);
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--c-text-2);
+  max-width: 62ch;
+}
+
+/* --------------------------------------------------------------------------
+   对比表
+   -------------------------------------------------------------------------- */
+.cmp-wrap {
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-container);
+  background: var(--c-surface);
+  overflow-x: auto;
+}
+
+.cmp {
+  width: 100%;
+  min-width: 780px;
+  border-collapse: collapse;
+}
+
+.cmp th,
+.cmp td {
+  padding: var(--sp-4) var(--sp-5);
+  text-align: left;
+  vertical-align: top;
+  font-size: 13.5px;
+}
+
+.cmp thead th {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--c-text-2);
+  background: var(--c-surface-sunken);
+  border-bottom: 1px solid var(--c-border);
+  white-space: nowrap;
+}
+
+.cmp tbody th {
+  font-weight: 600;
+  color: var(--c-text-2);
+  white-space: nowrap;
+}
+
+.cmp tbody tr + tr th,
+.cmp tbody tr + tr td {
+  border-top: 1px solid var(--c-border);
+}
+
+.cmp tbody tr:hover td,
+.cmp tbody tr:hover th {
+  background: var(--c-surface-sunken);
+}
+
+/* 表头列用各方向的强调色点出来，方便横向对照 */
+.cmp thead th:nth-child(2) {
+  color: #3553c6;
+}
+
+.cmp thead th:nth-child(3) {
+  color: #1d7a5c;
+}
+
+.cmp thead th:nth-child(4) {
+  color: #b34a26;
+}
+
+/* --------------------------------------------------------------------------
+   能力清单
+   -------------------------------------------------------------------------- */
+.feat {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+.feat__item {
+  padding: var(--sp-5);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-container);
+  background: var(--c-surface);
+}
+
+.feat__title {
+  font-size: 14.5px;
+  font-weight: 700;
+}
+
+.feat__desc {
+  margin-top: var(--sp-2);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--c-text-2);
+}
+
+/* --------------------------------------------------------------------------
+   说明
+   -------------------------------------------------------------------------- */
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.note {
+  padding: var(--sp-5);
+  border-left: 3px solid var(--c-accent);
+  border-radius: 0 var(--r-container) var(--r-container) 0;
+  background: var(--c-surface);
+  border-top: 1px solid var(--c-border);
+  border-right: 1px solid var(--c-border);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.note__title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.note__desc {
+  margin-top: var(--sp-2);
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--c-text-2);
+  max-width: 78ch;
+}
+
+.note code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--c-surface-sunken);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+/* --------------------------------------------------------------------------
+   页脚
+   -------------------------------------------------------------------------- */
+.foot {
+  margin-top: var(--sp-16);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--c-border);
+}
+
+.foot__line {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.foot__line a {
+  color: var(--c-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.foot__meta {
+  margin-top: var(--sp-2);
+  font-size: 13px;
+  color: var(--c-text-3);
+}
+
+/* --------------------------------------------------------------------------
+   响应式
+   -------------------------------------------------------------------------- */
+@media (max-width: 1080px) {
+  .feat {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 940px) {
+  .dir-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dir-card__shot {
+    border-right: none;
+    border-bottom: 1px solid var(--c-border);
+    min-height: 300px;
+  }
+
+  .hero__title {
+    font-size: 30px;
+    max-width: none;
+  }
+
+  .hero__inner,
+  .wrap {
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+}
+
+@media (max-width: 680px) {
+  .feat {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dir-card__shot img {
+    transform: scale(0.28);
+  }
+
+  .dir-card__shot {
+    min-height: 240px;
+  }
+
+  .dir-card__actions {
+    flex-wrap: wrap;
+  }
+}

@@ -1,0 +1,695 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方向 B · 石墨终端 | 社团管理系统前端方案</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/console.css">
+<link rel="stylesheet" href="css/b-graphite.css">
+</head>
+<body class="dir-b">
+
+<!-- Tabler Icons (MIT) 图标精灵。stroke-width 统一由 CSS 控制。 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-dashboard" viewBox="0 0 24 24">
+      <path d="M5 4h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1"/>
+      <path d="M5 16h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1"/>
+      <path d="M15 12h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1"/>
+      <path d="M15 4h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1"/>
+    </symbol>
+    <symbol id="i-users" viewBox="0 0 24 24">
+      <path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/>
+      <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      <path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/>
+    </symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24">
+      <path d="M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"/>
+      <path d="M16 3l0 4"/><path d="M8 3l0 4"/><path d="M4 11l16 0"/>
+      <path d="M8 15h2v2h-2z"/>
+    </symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24">
+      <path d="M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12"/>
+      <path d="M20 12v4h-4a2 2 0 0 1 0 -4h4"/>
+    </symbol>
+    <symbol id="i-clipboard" viewBox="0 0 24 24">
+      <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2"/>
+      <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"/>
+      <path d="M9 14l2 2l4 -4"/>
+    </symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24">
+      <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/>
+      <path d="M9 17v1a3 3 0 0 0 6 0v-1"/>
+    </symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24">
+      <path d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2"/>
+    </symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24">
+      <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/>
+      <path d="M12 12l3 2"/><path d="M12 7v5"/>
+    </symbol>
+    <symbol id="i-userplus" viewBox="0 0 24 24">
+      <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/>
+      <path d="M16 19h6"/><path d="M19 16v6"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4"/>
+    </symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24">
+      <path d="M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/>
+      <path d="M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/>
+      <path d="M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/>
+      <path d="M4 20h14"/>
+    </symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24">
+      <path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/>
+      <path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/>
+    </symbol>
+    <symbol id="i-search" viewBox="0 0 24 24">
+      <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>
+      <path d="M21 21l-6 -6"/>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24">
+      <path d="M12 5l0 14"/><path d="M5 12l14 0"/>
+    </symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6l-6 6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24">
+      <path d="M12 9v4"/>
+      <path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/>
+      <path d="M12 16h.01"/>
+    </symbol>
+    <symbol id="i-listcheck" viewBox="0 0 24 24">
+      <path d="M3.5 5.5l1.5 1.5l2.5 -2.5"/>
+      <path d="M3.5 11.5l1.5 1.5l2.5 -2.5"/>
+      <path d="M3.5 17.5l1.5 1.5l2.5 -2.5"/>
+      <path d="M11 6l9 0"/><path d="M11 12l9 0"/><path d="M11 18l9 0"/>
+    </symbol>
+  </defs>
+</svg>
+
+<style>
+  .icon { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor;
+          stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .icon--18 { width: 18px; height: 18px; }
+</style>
+
+<!-- 原型外壳：评审用的切换条，不属于设计本身 -->
+<div class="proto-bar">
+  <span class="proto-bar__label">原型预览</span>
+  <button class="proto-bar__btn" type="button" data-goto="login">登录页</button>
+  <button class="proto-bar__btn" type="button" data-goto="dashboard">仪表盘</button>
+  <button class="proto-bar__btn" type="button" data-goto="members">成员管理</button>
+  <span class="proto-bar__spacer"></span>
+  <span class="proto-bar__meta">方向 B · 石墨终端</span>
+  <a class="proto-bar__back" href="index.html">返回对比</a>
+</div>
+
+<!-- ========================================================================
+     屏幕一：登录（整幅实景 + 居中面板）
+     ======================================================================== -->
+<div class="screen" data-screen="login">
+  <div class="login-full">
+    <img class="login-full__photo" src="img/panel-graphite.jpg" alt="" fetchpriority="high">
+    <div class="login-full__scrim"></div>
+
+    <div class="login-full__inner">
+      <div class="login-full__brand">
+        <span class="login-full__brand-mark">计</span>
+        <span>计算机协会 · 管理台</span>
+      </div>
+
+      <form class="login-card" id="login-form" novalidate>
+        <h1 class="login-card__title">登录</h1>
+        <p class="login-card__subtitle">2025-2026 学年 · 第 26 届</p>
+
+        <div class="login-card__fields">
+          <label class="field">
+            <span class="field__label">账号</span>
+            <input class="input" type="text" id="login-account"
+                   placeholder="学号或用户名" autocomplete="username">
+          </label>
+          <label class="field">
+            <span class="field__label">密码</span>
+            <input class="input" type="password" id="login-password"
+                   placeholder="请输入登录密码" autocomplete="current-password">
+          </label>
+        </div>
+
+        <p class="login__error" id="login-error" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
+          <span>账号或密码不能为空，请填写后重试。</span>
+        </p>
+
+        <div class="login-card__row">
+          <label class="check">
+            <input type="checkbox" checked>
+            <span>保持登录状态</span>
+          </label>
+          <a class="link" href="#">忘记密码</a>
+        </div>
+
+        <button class="btn btn--primary login-card__submit" type="submit">登 录</button>
+      </form>
+
+      <p class="login-full__foot">还没有账号？联系社长在成员管理中开通。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================
+     屏幕二与三：管理后台
+     ======================================================================== -->
+<div class="screen" data-screen="app">
+  <div class="shell">
+
+    <aside class="sidebar">
+      <div class="sidebar__head">
+        <span class="sidebar__mark">计</span>
+        <div>
+          <div class="sidebar__name">计算机协会</div>
+          <div class="sidebar__term">第 26 届 · 2025-2026</div>
+        </div>
+      </div>
+
+      <nav class="sidebar__nav">
+        <div class="sidebar__group">
+          <div class="sidebar__group-label">/ 日常</div>
+          <button class="nav-item" type="button" data-goto="dashboard" data-nav="dashboard" aria-current="true">
+            <svg class="icon nav-item__icon" aria-hidden="true"><use href="#i-dashboard"/></svg>
+            <span>概览</span>
+          </button>
+          <button class="nav-item" type="button" data-goto="members" data-nav="members">
+            <svg class="icon nav-item__icon" aria-hidden="true"><use href="#i-users"/></svg>
+            <span>成员管理</span>
+            <span class="nav-item__count">82</span>
+          </button>
+          <button class="nav-item" type="button" data-goto="todo">
+            <svg class="icon nav-item__icon" aria-hidden="true"><use href="#i-calendar"/></svg>
+            <span>活动管理</span>
+            <span class="nav-item__count">3</span>
+          </button>
+          <button class="nav-item" type="button" data-goto="todo">
+            <svg class="icon nav-item__icon" aria-hidden="true"><use href="#i-clipboard"/></svg>
+            <span>报名与签到</span>
+            <span class="nav-item__count">12</span>
+          </button>
+          <button class="nav-item" type="button" data-goto="todo">
+            <svg class="icon nav-item__icon" aria-hidden="true"><use href="#i-clock"/></svg>
+            <span>值班表</span>
+          </button>
+        </div>
+
+        <div class="sidebar__group">
+          <div class="sidebar__group-label">/ 财务</div>
+          <button class="nav-item" type="button" data-goto="todo">
+            <svg class="icon nav-item__icon" aria-hidden="true"><use href="#i-wallet"/></svg>
+            <span>经费管理</span>
+          </button>
+          <button class="nav-item" type="button" data-goto="todo">
+            <svg class="icon nav-item__icon" aria-hidden="true"><use href="#i-listcheck"/></svg>
+            <span>会费收缴</span>
+            <span class="nav-item__count">11</span>
+          </button>
+          <button class="nav-item" type="button" data-goto="todo">
+            <svg class="icon nav-item__icon" aria-hidden="true"><use href="#i-folder"/></svg>
+            <span>文件共享</span>
+          </button>
+          <button class="nav-item" type="button" data-goto="todo">
+            <svg class="icon nav-item__icon" aria-hidden="true"><use href="#i-bell"/></svg>
+            <span>通知公告</span>
+          </button>
+        </div>
+
+        <div class="sidebar__group">
+          <div class="sidebar__group-label">/ 拓展</div>
+          <button class="nav-item" type="button" data-goto="todo">
+            <svg class="icon nav-item__icon" aria-hidden="true"><use href="#i-userplus"/></svg>
+            <span>招新管理</span>
+          </button>
+          <button class="nav-item" type="button" data-goto="todo">
+            <svg class="icon nav-item__icon" aria-hidden="true"><use href="#i-chart"/></svg>
+            <span>数据统计</span>
+          </button>
+          <button class="nav-item" type="button" data-goto="todo">
+            <svg class="icon nav-item__icon" aria-hidden="true"><use href="#i-settings"/></svg>
+            <span>系统设置</span>
+          </button>
+        </div>
+      </nav>
+
+      <div class="sidebar__foot">
+        <button class="user-chip" type="button">
+          <span class="avatar">陈</span>
+          <span>
+            <span class="user-chip__name">陈嘉禾</span>
+            <span class="user-chip__role">社长 · 技术部</span>
+          </span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <input class="input topbar__search" type="search" placeholder="搜索成员、活动、流水" aria-label="全局搜索">
+        <span class="topbar__spacer"></span>
+        <button class="btn btn--ghost btn--sm" type="button">
+          <svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg>
+          <span>通知</span>
+        </button>
+      </header>
+
+      <div class="content">
+        <div class="content__inner">
+
+          <!-- ---------------- 视图：概览 ---------------- -->
+          <section class="view" data-view="dashboard">
+            <div class="page-head">
+              <div>
+                <h1 class="page-head__title">概览</h1>
+                <p class="page-head__desc">计算机协会 · 第 26 届 · 数据截至 2026-10-15</p>
+              </div>
+              <div class="page-head__actions">
+                <button class="btn btn--ghost btn--sm" type="button">导出报表</button>
+                <button class="btn btn--primary btn--sm" type="button">
+                  <svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>
+                  <span>新建活动</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="metrics js-metrics">
+              <div class="metric">
+                <div class="metric__label">在册成员</div>
+                <div class="metric__value js-countup" data-to="82">0</div>
+                <div class="metric__foot">较上学期 <span class="metric__delta metric__delta--up">+7</span></div>
+              </div>
+              <div class="metric">
+                <div class="metric__label">本月活动</div>
+                <div class="metric__value js-countup" data-to="3">0</div>
+                <div class="metric__foot">2 场已完成</div>
+              </div>
+              <div class="metric">
+                <div class="metric__label">经费余额</div>
+                <div class="metric__value js-countup" data-to="1260" data-prefix="¥">¥0</div>
+                <div class="metric__foot">期初结余 ¥1,860</div>
+              </div>
+              <div class="metric">
+                <div class="metric__label">待办事项</div>
+                <div class="metric__value js-countup" data-to="10">0</div>
+                <div class="metric__foot">报名 7、经费 2、换班 1</div>
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <section class="panel">
+                <div class="panel__head">
+                  <h2 class="panel__title">近期活动</h2>
+                  <a class="panel__action" href="#">查看全部</a>
+                </div>
+                <div class="table-wrap">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>活动</th>
+                        <th>时间</th>
+                        <th>报名 / 签到</th>
+                        <th>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>
+                          <div class="activity-cell__title">
+                            <span class="live-dot" title="正在接收报名"></span>秋季算法训练营
+                          </div>
+                          <div class="activity-cell__cat">技术沙龙 · 沈亦舟</div>
+                        </td>
+                        <td class="mono">10-20 19:00</td>
+                        <td>
+                          <div class="progress-mini">
+                            <span class="progress-mini__track"><span class="progress-mini__fill" style="width:77%"></span></span>
+                            <span class="mono">46 / 60</span>
+                          </div>
+                        </td>
+                        <td><span class="tag tag--accent">报名中</span></td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <div class="activity-cell__title">校运动会志愿服务</div>
+                          <div class="activity-cell__cat">志愿服务 · 林知远</div>
+                        </td>
+                        <td class="mono">10-15 08:00</td>
+                        <td>
+                          <div class="progress-mini">
+                            <span class="progress-mini__track"><span class="progress-mini__fill" style="width:70%"></span></span>
+                            <span class="mono">21 / 30</span>
+                          </div>
+                        </td>
+                        <td><span class="tag tag--ok">进行中</span></td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <div class="activity-cell__title">前端工程化分享会</div>
+                          <div class="activity-cell__cat">技术沙龙 · 高沐阳</div>
+                        </td>
+                        <td class="mono">10-08 19:30</td>
+                        <td>
+                          <div class="progress-mini">
+                            <span class="progress-mini__track"><span class="progress-mini__fill" style="width:73%"></span></span>
+                            <span class="mono">38 / 52</span>
+                          </div>
+                        </td>
+                        <td><span class="tag tag--neutral">已结束</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section class="panel">
+                <div class="panel__head">
+                  <h2 class="panel__title">待我处理</h2>
+                  <a class="panel__action" href="#">全部待办</a>
+                </div>
+                <div class="panel__body">
+                  <button class="todo" type="button">
+                    <span>
+                      <span class="todo__label">报名待审核</span>
+                      <span class="todo__desc">秋季算法训练营等 2 场活动</span>
+                    </span>
+                    <span class="todo__count">7</span>
+                  </button>
+                  <button class="todo" type="button">
+                    <span>
+                      <span class="todo__label">经费待审批</span>
+                      <span class="todo__desc">训练营物料、场地押金</span>
+                    </span>
+                    <span class="todo__count">2</span>
+                  </button>
+                  <button class="todo" type="button">
+                    <span>
+                      <span class="todo__label">换班申请</span>
+                      <span class="todo__desc">唐听澜申请调换周四班次</span>
+                    </span>
+                    <span class="todo__count">1</span>
+                  </button>
+                </div>
+              </section>
+            </div>
+
+            <div class="grid-2">
+              <section class="panel">
+                <div class="panel__head">
+                  <h2 class="panel__title">经费趋势</h2>
+                  <a class="panel__action" href="#">按科目拆分</a>
+                </div>
+                <div class="panel__body">
+                  <p class="panel__note">
+                    近 5 个月支出合计 <span class="mono">¥8,177</span>。10 月抬升来自场地押金 <span class="mono">¥1,800</span>
+                    与训练营奖品采购 <span class="mono">¥1,200</span> 两笔一次性支出。
+                  </p>
+                  <svg class="spark" viewBox="0 0 600 160" preserveAspectRatio="none" aria-hidden="true">
+                    <path class="spark__axis" d="M24 140 L576 140" vector-effect="non-scaling-stroke"/>
+                    <path class="spark__area"
+                          d="M40 132.5 L170 115 L300 135.1 L430 101.1 L560 20 L560 140 L40 140 Z"/>
+                    <path class="spark__line" id="spark-line"
+                          d="M40 132.5 L170 115 L300 135.1 L430 101.1 L560 20"
+                          vector-effect="non-scaling-stroke"/>
+                  </svg>
+                  <div class="spark__months">
+                    <span>6 月</span><span>7 月</span><span>8 月</span><span>9 月</span><span>10 月</span>
+                  </div>
+                </div>
+              </section>
+
+              <section class="panel">
+                <div class="panel__head">
+                  <h2 class="panel__title">部门分布</h2>
+                  <a class="panel__action" href="#">部门设置</a>
+                </div>
+                <div class="panel__body">
+                  <div class="dept">
+                    <div class="dept__row">
+                      <span class="dept__name">技术部</span>
+                      <span class="dept__value">34<span class="dept__share">41%</span></span>
+                    </div>
+                    <div class="dept__bar" style="width:41%"></div>
+                  </div>
+                  <div class="dept">
+                    <div class="dept__row">
+                      <span class="dept__name">宣传部</span>
+                      <span class="dept__value">19<span class="dept__share">23%</span></span>
+                    </div>
+                    <div class="dept__bar" style="width:23%"></div>
+                  </div>
+                  <div class="dept">
+                    <div class="dept__row">
+                      <span class="dept__name">组织部</span>
+                      <span class="dept__value">15<span class="dept__share">18%</span></span>
+                    </div>
+                    <div class="dept__bar" style="width:18%"></div>
+                  </div>
+                  <div class="dept">
+                    <div class="dept__row">
+                      <span class="dept__name">外联部</span>
+                      <span class="dept__value">14<span class="dept__share">17%</span></span>
+                    </div>
+                    <div class="dept__bar" style="width:17%"></div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <section class="panel" style="margin-top:var(--sp-4)">
+              <div class="panel__head">
+                <h2 class="panel__title">经费流水</h2>
+                <a class="panel__action" href="#">全部流水与凭证</a>
+              </div>
+              <div class="panel__body">
+                <div class="ledger">
+                  <div class="ledger__row">
+                    <span class="ledger__date">2026-10-14</span>
+                    <span>
+                      <span class="ledger__title">打印招新宣传单</span>
+                      <span class="ledger__cat">宣传物料</span>
+                    </span>
+                    <span class="ledger__amount ledger__amount--out">-¥299.70</span>
+                  </div>
+                  <div class="ledger__row">
+                    <span class="ledger__date">2026-10-11</span>
+                    <span>
+                      <span class="ledger__title">校园数码赞助到账</span>
+                      <span class="ledger__cat">赞助收入</span>
+                    </span>
+                    <span class="ledger__amount ledger__amount--in">+¥2,000.00</span>
+                  </div>
+                  <div class="ledger__row">
+                    <span class="ledger__date">2026-10-08</span>
+                    <span>
+                      <span class="ledger__title">分享会茶歇</span>
+                      <span class="ledger__cat">活动支出</span>
+                    </span>
+                    <span class="ledger__amount ledger__amount--out">-¥213.80</span>
+                  </div>
+                  <div class="ledger__row">
+                    <span class="ledger__date">2026-10-03</span>
+                    <span>
+                      <span class="ledger__title">训练营奖品与物料</span>
+                      <span class="ledger__cat">活动支出</span>
+                    </span>
+                    <span class="ledger__amount ledger__amount--out">-¥486.50</span>
+                  </div>
+                </div>
+                <div class="ledger__balance">
+                  <span class="ledger__balance-label">当前余额，以流水为准</span>
+                  <span class="ledger__balance-value js-countup" data-to="1260" data-prefix="¥" data-decimals="2">¥0.00</span>
+                </div>
+              </div>
+            </section>
+          </section>
+
+          <!-- ---------------- 视图：成员管理 ---------------- -->
+          <section class="view" data-view="members">
+            <div class="page-head">
+              <div>
+                <h1 class="page-head__title">成员管理</h1>
+                <p class="page-head__desc">在册 82 人，骨干 9 人，本学年新增 7 人</p>
+              </div>
+              <div class="page-head__actions">
+                <button class="btn btn--ghost btn--sm" type="button">批量导入</button>
+                <button class="btn btn--primary btn--sm" type="button">
+                  <svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>
+                  <span>新增成员</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="toolbar">
+              <input class="input toolbar__search" type="search" id="member-search"
+                     placeholder="搜索姓名、学号或手机号" aria-label="搜索成员">
+              <select class="select" id="member-dept" aria-label="按部门筛选">
+                <option value="">全部部门</option>
+                <option>技术部</option>
+                <option>宣传部</option>
+                <option>组织部</option>
+                <option>外联部</option>
+              </select>
+              <select class="select" id="member-status" aria-label="按状态筛选">
+                <option value="">全部状态</option>
+                <option>在册</option>
+                <option>冻结</option>
+              </select>
+              <span class="toolbar__spacer"></span>
+              <button class="btn btn--ghost btn--sm" type="button">导出名单</button>
+            </div>
+
+            <section class="panel">
+              <div class="table-wrap" id="member-skeleton" hidden>
+                <div class="panel__body">
+                  <div class="skeleton" style="height:16px;margin-bottom:12px"></div>
+                  <div class="skeleton" style="height:38px;margin-bottom:6px"></div>
+                  <div class="skeleton" style="height:38px;margin-bottom:6px"></div>
+                  <div class="skeleton" style="height:38px;margin-bottom:6px"></div>
+                  <div class="skeleton" style="height:38px"></div>
+                </div>
+              </div>
+
+              <div class="table-wrap" id="member-table-wrap">
+                <table class="table" id="member-table">
+                  <thead>
+                    <tr>
+                      <th>成员</th>
+                      <th>部门</th>
+                      <th>职位</th>
+                      <th>联系方式</th>
+                      <th class="table__num">积分</th>
+                      <th>状态</th>
+                      <th class="table__actions">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="member-rows">
+                    <tr data-name="陈嘉禾" data-no="2022213048" data-phone="138-0021-4478" data-dept="技术部" data-status="在册">
+                      <td><div class="person"><span class="avatar">陈</span><span><span class="person__name">陈嘉禾</span><span class="person__meta">2022213048</span></span></div></td>
+                      <td>技术部</td><td>社长</td><td class="mono">138-0021-4478</td>
+                      <td class="table__num mono">386</td>
+                      <td><span class="tag tag--ok">在册</span></td>
+                      <td class="table__actions"><a class="row-link" href="#">编辑</a><a class="row-link" href="#">档案</a></td>
+                    </tr>
+                    <tr data-name="林知远" data-no="2022211075" data-phone="139-8842-1120" data-dept="组织部" data-status="在册">
+                      <td><div class="person"><span class="avatar avatar--alt">林</span><span><span class="person__name">林知远</span><span class="person__meta">2022211075</span></span></div></td>
+                      <td>组织部</td><td>副社长</td><td class="mono">139-8842-1120</td>
+                      <td class="table__num mono">352</td>
+                      <td><span class="tag tag--ok">在册</span></td>
+                      <td class="table__actions"><a class="row-link" href="#">编辑</a><a class="row-link" href="#">档案</a></td>
+                    </tr>
+                    <tr data-name="沈亦舟" data-no="2023312016" data-phone="136-7719-5503" data-dept="技术部" data-status="在册">
+                      <td><div class="person"><span class="avatar">沈</span><span><span class="person__name">沈亦舟</span><span class="person__meta">2023312016</span></span></div></td>
+                      <td>技术部</td><td>部长</td><td class="mono">136-7719-5503</td>
+                      <td class="table__num mono">318</td>
+                      <td><span class="tag tag--ok">在册</span></td>
+                      <td class="table__actions"><a class="row-link" href="#">编辑</a><a class="row-link" href="#">档案</a></td>
+                    </tr>
+                    <tr data-name="周晚晴" data-no="2023314082" data-phone="150-2287-6641" data-dept="宣传部" data-status="在册">
+                      <td><div class="person"><span class="avatar avatar--alt">周</span><span><span class="person__name">周晚晴</span><span class="person__meta">2023314082</span></span></div></td>
+                      <td>宣传部</td><td>部长</td><td class="mono">150-2287-6641</td>
+                      <td class="table__num mono">297</td>
+                      <td><span class="tag tag--ok">在册</span></td>
+                      <td class="table__actions"><a class="row-link" href="#">编辑</a><a class="row-link" href="#">档案</a></td>
+                    </tr>
+                    <tr data-name="许砚清" data-no="2024415023" data-phone="137-6614-9932" data-dept="外联部" data-status="在册">
+                      <td><div class="person"><span class="avatar">许</span><span><span class="person__name">许砚清</span><span class="person__meta">2024415023</span></span></div></td>
+                      <td>外联部</td><td>干事</td><td class="mono">137-6614-9932</td>
+                      <td class="table__num mono">214</td>
+                      <td><span class="tag tag--ok">在册</span></td>
+                      <td class="table__actions"><a class="row-link" href="#">编辑</a><a class="row-link" href="#">档案</a></td>
+                    </tr>
+                    <tr data-name="高沐阳" data-no="2024412061" data-phone="188-3345-7710" data-dept="技术部" data-status="在册">
+                      <td><div class="person"><span class="avatar avatar--alt">高</span><span><span class="person__name">高沐阳</span><span class="person__meta">2024412061</span></span></div></td>
+                      <td>技术部</td><td>干事</td><td class="mono">188-3345-7710</td>
+                      <td class="table__num mono">186</td>
+                      <td><span class="tag tag--ok">在册</span></td>
+                      <td class="table__actions"><a class="row-link" href="#">编辑</a><a class="row-link" href="#">档案</a></td>
+                    </tr>
+                    <tr data-name="郑云舒" data-no="2024414044" data-phone="159-9023-4418" data-dept="宣传部" data-status="在册">
+                      <td><div class="person"><span class="avatar">郑</span><span><span class="person__name">郑云舒</span><span class="person__meta">2024414044</span></span></div></td>
+                      <td>宣传部</td><td>干事</td><td class="mono">159-9023-4418</td>
+                      <td class="table__num mono">172</td>
+                      <td><span class="tag tag--ok">在册</span></td>
+                      <td class="table__actions"><a class="row-link" href="#">编辑</a><a class="row-link" href="#">档案</a></td>
+                    </tr>
+                    <tr data-name="冯乐陶" data-no="2025413087" data-phone="135-7781-2264" data-dept="组织部" data-status="在册">
+                      <td><div class="person"><span class="avatar avatar--alt">冯</span><span><span class="person__name">冯乐陶</span><span class="person__meta">2025413087</span></span></div></td>
+                      <td>组织部</td><td>干事</td><td class="mono">135-7781-2264</td>
+                      <td class="table__num mono">96</td>
+                      <td><span class="tag tag--ok">在册</span></td>
+                      <td class="table__actions"><a class="row-link" href="#">编辑</a><a class="row-link" href="#">档案</a></td>
+                    </tr>
+                    <tr data-name="唐听澜" data-no="2025415092" data-phone="186-4490-3375" data-dept="外联部" data-status="冻结">
+                      <td><div class="person"><span class="avatar">唐</span><span><span class="person__name">唐听澜</span><span class="person__meta">2025415092</span></span></div></td>
+                      <td>外联部</td><td>成员</td><td class="mono">186-4490-3375</td>
+                      <td class="table__num mono">54</td>
+                      <td><span class="tag tag--warn">冻结</span></td>
+                      <td class="table__actions"><a class="row-link" href="#">编辑</a><a class="row-link" href="#">档案</a></td>
+                    </tr>
+                    <tr data-name="顾星言" data-no="2025412058" data-phone="133-5528-8806" data-dept="技术部" data-status="在册">
+                      <td><div class="person"><span class="avatar avatar--alt">顾</span><span><span class="person__name">顾星言</span><span class="person__meta">2025412058</span></span></div></td>
+                      <td>技术部</td><td>成员</td><td class="mono">133-5528-8806</td>
+                      <td class="table__num mono">38</td>
+                      <td><span class="tag tag--ok">在册</span></td>
+                      <td class="table__actions"><a class="row-link" href="#">编辑</a><a class="row-link" href="#">档案</a></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="state" id="member-empty" hidden>
+                <span class="placeholder__mark">
+                  <svg class="icon icon--18" aria-hidden="true"><use href="#i-search"/></svg>
+                </span>
+                <p class="state__title">没有匹配的成员</p>
+                <p class="state__desc">换一个关键词，或者清空部门与状态筛选后重新查看。</p>
+                <button class="btn btn--ghost btn--sm" type="button" id="member-reset">清空筛选条件</button>
+              </div>
+
+              <div class="table-foot" id="member-foot">
+                <span>显示第 <span class="mono" id="member-range">1-10</span> 条，共 <span class="mono">82</span> 条</span>
+                <div class="pager">
+                  <button class="pager__btn" type="button" aria-label="上一页">上一页</button>
+                  <button class="pager__btn" type="button" aria-current="true">1</button>
+                  <button class="pager__btn" type="button">2</button>
+                  <button class="pager__btn" type="button">3</button>
+                  <button class="pager__btn" type="button" aria-label="下一页">下一页</button>
+                </div>
+              </div>
+            </section>
+          </section>
+
+          <!-- ---------------- 视图：待扩展的模块 ---------------- -->
+          <section class="view" data-view="todo">
+            <div class="placeholder">
+              <div class="state">
+                <span class="placeholder__mark">
+                  <svg class="icon icon--18" aria-hidden="true"><use href="#i-listcheck"/></svg>
+                </span>
+                <p class="state__title">这个模块还没有绘制原型</p>
+                <p class="state__desc">
+                  本次先交付登录页、概览与成员管理三个界面用于判断视觉方向。确定方向后，
+                  会按同一套形制补齐活动、报名签到、经费、值班、通知与文件共享。
+                </p>
+                <button class="btn btn--primary btn--sm" type="button" data-goto="dashboard">返回概览</button>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/ScrollTrigger.min.js"></script>
+<script src="js/motion.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/b.js"></script>
+</body>
+</html>
