@@ -91,6 +91,36 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '我的档案', icon: 'Postcard', group: '个人', order: 80 },
       },
       {
+        path: 'fund/overview',
+        name: 'fund-overview',
+        component: () => import('@/views/fund/overview.vue'),
+        meta: { title: '财务公示', icon: 'Wallet', perm: 'menu:fund-account', group: '经费', order: 40 },
+      },
+      {
+        path: 'fund/transactions',
+        name: 'fund-transactions',
+        component: () => import('@/views/fund/transactions.vue'),
+        meta: { title: '收支流水', icon: 'Tickets', perm: 'fund:read', group: '经费', order: 41 },
+      },
+      {
+        path: 'fund/budgets',
+        name: 'fund-budgets',
+        component: () => import('@/views/fund/budgets.vue'),
+        meta: { title: '预算管理', icon: 'PieChart', perm: 'menu:budget', group: '经费', order: 42 },
+      },
+      {
+        path: 'fund/fees',
+        name: 'fund-fees',
+        component: () => import('@/views/fund/fees.vue'),
+        meta: { title: '会费管理', icon: 'Money', perm: 'menu:fee', group: '经费', order: 43 },
+      },
+      {
+        path: 'system/reconcile',
+        name: 'reconcile',
+        component: () => import('@/views/system/reconcile.vue'),
+        meta: { title: '数据对账', icon: 'Refresh', perm: 'reconcile:update', group: '系统', order: 92 },
+      },
+      {
         path: 'system/roles',
         name: 'roles',
         component: () => import('@/views/system/role/index.vue'),
