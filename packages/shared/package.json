@@ -1,0 +1,19 @@
+{
+  "name": "@club/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "前后端共享的枚举、常量、类型与校验规则（唯一真相）",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}

@@ -319,6 +319,14 @@ DTO 用 `class-validator` 装饰器声明校验规则，配合全局 `Validation
 
 Swagger 装饰器（`@ApiTags` `@ApiOperation`）要跟上，自动生成的接口文档是排错与接手项目的入口。
 
+**模块格式：全仓库 ESM。** NestJS 12 的官方包已经是 ESM-only（`"type": "module"`），
+所以 `apps/server` 与 `packages/shared` 都声明了 `"type": "module"`，tsconfig 用
+`module: nodenext`。由此带来两条硬性约定：
+
+- **相对导入必须带 `.js` 扩展名**，例如 `import { AppModule } from './app.module.js'`。
+  这是 Node ESM 的解析规则作用在编译产物上的要求，不是笔误。
+- **没有 `__dirname`**，需要目录时用 `import.meta.dirname`。
+
 ### 7.2 统一响应体
 
 ```ts

@@ -1,0 +1,34 @@
+{
+  "name": "club-management",
+  "version": "0.1.0",
+  "private": true,
+  "description": "社团管理系统 —— 成员、活动、经费一体化管理",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev:server": "npm run start:dev -w @club/server",
+    "dev:web": "npm run dev -w @club/web",
+    "build:shared": "npm run build -w @club/shared",
+    "build:server": "npm run build -w @club/server",
+    "build:web": "npm run build -w @club/web",
+    "build": "npm run build:shared && npm run build:server && npm run build:web",
+    "typecheck": "npm run build:shared && npm run typecheck -w @club/server && npm run typecheck -w @club/web",
+    "prisma:validate": "prisma validate",
+    "prisma:format": "prisma format",
+    "prisma:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "db:seed": "npm run build:shared && prisma db seed"
+  },
+  "devDependencies": {
+    "prisma": "7.10.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  }
+}
