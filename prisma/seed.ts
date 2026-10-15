@@ -245,10 +245,17 @@ function managerPerms(writable: readonly string[]): string[] {
   });
 }
 
-/** 普通成员：只看自己的，菜单只留工作台与活动 */
+/** 普通成员：只看自己的，菜单只留工作台、活动与成员名录 */
 function memberPerms(): string[] {
-  const allowedMenus = ['menu:dashboard', 'menu:activity-list'];
-  const allowedActions = ['activity:read', 'notice:read', 'file:read', 'point:read', 'leave:approve'];
+  const allowedMenus = ['menu:dashboard', 'menu:activity-list', 'menu:member'];
+  const allowedActions = [
+    'member:read',
+    'activity:read',
+    'notice:read',
+    'file:read',
+    'point:read',
+    'leave:approve',
+  ];
   return ALL_PERMISSION_CODES.filter(
     (code) => allowedMenus.includes(code) || allowedActions.includes(code),
   );
