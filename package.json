@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "社团管理系统 —— 成员、活动、经费一体化管理",
+  "type": "module",
   "workspaces": [
     "packages/*",
     "apps/*"
@@ -17,7 +18,8 @@
     "build:server": "npm run build -w @club/server",
     "build:web": "npm run build -w @club/web",
     "build": "npm run build:shared && npm run build:server && npm run build:web",
-    "typecheck": "npm run build:shared && npm run typecheck -w @club/server && npm run typecheck -w @club/web",
+    "typecheck": "npm run build:shared && npm run typecheck:root && npm run typecheck -w @club/server && npm run typecheck -w @club/web",
+    "typecheck:root": "tsc --noEmit -p tsconfig.json",
     "prisma:validate": "prisma validate",
     "prisma:format": "prisma format",
     "prisma:generate": "prisma generate",
@@ -27,6 +29,8 @@
     "db:seed": "npm run build:shared && prisma db seed"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "bcrypt": "^6.0.0",
     "dotenv": "^18.0.8",
     "prisma": "7.10.0",
     "tsx": "^4.23.15",

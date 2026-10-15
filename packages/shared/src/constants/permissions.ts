@@ -216,3 +216,23 @@ export const ALL_PERMISSION_CODES: readonly string[] = [
   ...MENU_PERMISSION_CODES,
   ...ACTION_PERMISSIONS.map((p) => p.code),
 ];
+
+/**
+ * 功能权限默认挂在 `menu:模块名` 下。有几处菜单名跟模块名对不上，
+ * 在这里显式指定，免得它们的权限节点散落在树根。
+ */
+export const PERMISSION_MENU_OVERRIDES: Partial<Record<PermissionModule, string>> = {
+  club: 'menu:org',
+  'activity-registration': 'menu:registration',
+  notice: 'menu:announcement',
+  permission: 'menu:role',
+  fund: 'menu:fund-transaction',
+};
+
+/** 取某个功能权限应挂的菜单码；没有合适菜单时返回 null（挂树根） */
+export function menuCodeForModule(module: string): string | null {
+  const overridden = PERMISSION_MENU_OVERRIDES[module as PermissionModule];
+  if (overridden !== undefined) return overridden;
+  const conventional = `menu:${module}`;
+  return MENU_PERMISSION_CODES.includes(conventional) ? conventional : null;
+}
