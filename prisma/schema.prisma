@@ -1,0 +1,1782 @@
+// =============================================================================
+// 社团管理系统 · Prisma Schema
+// 数据库：MySQL 8.0   字符集：utf8mb4   引擎：InnoDB
+// 设计依据：docs/database-design.md（62 张表，P0/P1/P2 三层）
+// =============================================================================
+//
+// 全局约定
+// -----------------------------------------------------------------------------
+// 1. 主键一律 BIGINT UNSIGNED AUTOINCREMENT。
+// 2. 表名 snake_case 单数，用 @@map 映射；字段 camelCase，用 @map 映射。
+// 3. 金额一律 Decimal(12,2)，禁止 Float。
+// 4. 状态字段用 Int 而非 Prisma enum。Prisma enum 会建成 MySQL ENUM 列，
+//    增删值需要 ALTER TABLE；改为 Int + packages/shared 里的常量，取值的
+//    唯一真相在共享常量文件里（前后端同源）。业务可配置的枚举另走 sys_dict。
+// 5. 软删除用 deletedAt BigInt @default(0)，0 表示未删除。
+//    **不用可空 DateTime**：MySQL 唯一索引里 NULL 不参与比较，
+//    若 deletedAt 可空，UNIQUE(club_id, user_id, term_id, deleted_at)
+//    在多次删除后会失效，"删掉再加入"会撞唯一键。
+// 6. 多社团：业务表都带 clubId。**clubId 是软引用，不建外键**，理由见
+//    下方「关于 clubId」。其余领域外键都建真实关系。
+// 7. 审计字段 createdBy / updatedBy 只存 id，不建关系，避免 User 模型上
+//    堆积上百个反向关系字段。
+//
+// 关于 clubId
+// -----------------------------------------------------------------------------
+// clubId 保留为普通索引列，不声明 Prisma 关系。原因：
+//   a) 声明关系会让 Club 模型挂上 40 多个反向关系字段，可读性代价过大；
+//   b) club 行永不删除，外键在这里提供不了额外完整性保障；
+//   c) 租户隔离本来就必须在查询层强制（见数据范围权限），外键不代替它。
+// 这是对 design 文档「核心表建物理外键」的一处有意收敛，已同步进开发文档。
+//
+// 关于多态关联
+// -----------------------------------------------------------------------------
+// 审批流、文件、积分等通过 bizType + bizId 挂接任意业务，这类字段以及
+// approvalInstanceId 都是**软引用**，不声明关系。理由：多态关联无法用单一
+// 外键表达，且这是刻意设计（审批引擎不随业务表增加而改造）。
+//
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// 一、社团与组织架构
+// =============================================================================
+
+/// 社团。多租户的边界，即使当前只服务一个社团也要保留。
+model Club {
+  id          BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  code        String  @unique @db.VarChar(32) // 社团编号
+  name        String  @db.VarChar(64) // 计算机协会
+  shortName   String? @map("short_name") @db.VarChar(32)
+  logoUrl     String? @map("logo_url") @db.VarChar(255)
+  coverUrl    String? @map("cover_url") @db.VarChar(255)
+  description String? @db.Text
+
+  schoolName   String?   @map("school_name") @db.VarChar(64)
+  collegeName  String?   @map("college_name") @db.VarChar(64)
+  foundedAt    DateTime? @map("founded_at") @db.Date
+  contactEmail String?   @map("contact_email") @db.VarChar(64)
+  contactPhone String?   @map("contact_phone") @db.VarChar(20)
+  advisorName  String?   @map("advisor_name") @db.VarChar(32)
+
+  maxMembers Int @default(0) @map("max_members") // 0 = 不限
+  status     Int @default(1) // 1 正常 / 2 停用
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy BigInt?  @map("created_by") @db.UnsignedBigInt
+  updatedBy BigInt?  @map("updated_by") @db.UnsignedBigInt
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  // 这里刻意没有反向关系字段。clubId 是软引用（见文件头「关于 clubId」），
+  // 各业务模型只保留 clubId 列与索引，不声明 Prisma 关系。
+  // 需要按社团聚合时用显式查询：prisma.member.groupBy({ by: ['clubId'] })，
+  // 或在 Club 上写领域方法，而不是靠 Prisma 的关系加载。
+
+  @@map("club")
+}
+
+/// 届次 / 学年。社团每年换届，成员必须归属某个届次，否则第二年数据就混了。
+model Term {
+  id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId    BigInt   @map("club_id") @db.UnsignedBigInt
+  name      String   @db.VarChar(32) // 2025-2026 学年 / 第 26 届
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date") @db.Date
+  isCurrent Boolean  @default(false) @map("is_current") // 每社团仅一条为 true
+  status    Int      @default(1) // 1 进行中 / 2 已归档
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy BigInt?  @map("created_by") @db.UnsignedBigInt
+  updatedBy BigInt?  @map("updated_by") @db.UnsignedBigInt
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  members          Member[]
+  activities       Activity[]
+  fundTxns         FundTransaction[]
+  fundBudgets      FundBudget[]
+  feeStandards     MemberFeeStandard[]
+  pointRecords     PointRecord[]
+  assessments      Assessment[]
+  availabilities   MemberAvailability[]
+  dutyPlans        DutyPlan[]
+  recruitCampaigns RecruitCampaign[]
+
+  @@unique([clubId, name, deletedAt])
+  @@index([clubId, status])
+  @@map("term")
+}
+
+/// 部门。支持树形（parent_id = 0 为顶级）。
+model Department {
+  id             BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId         BigInt  @map("club_id") @db.UnsignedBigInt
+  parentId       BigInt  @default(0) @map("parent_id") @db.UnsignedBigInt
+  name           String  @db.VarChar(32)
+  leaderMemberId BigInt? @map("leader_member_id") @db.UnsignedBigInt
+  description    String? @db.VarChar(255)
+  sort           Int     @default(0)
+  status         Int     @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy BigInt?  @map("created_by") @db.UnsignedBigInt
+  updatedBy BigInt?  @map("updated_by") @db.UnsignedBigInt
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  // Department 与 Member 之间有两条独立关系，必须显式命名
+  leader   Member?      @relation("DeptLeader", fields: [leaderMemberId], references: [id])
+  members  Member[]     @relation("MemberDept")
+  children Department[] @relation("DeptTree")
+  parent   Department?  @relation("DeptTree", fields: [parentId], references: [id])
+
+  interviewSlots InterviewSlot[]
+
+  @@index([clubId, status])
+  @@index([parentId])
+  @@map("department")
+}
+
+// =============================================================================
+// 二、用户与成员
+// =============================================================================
+
+/// 用户账号。一个「人」，跨社团唯一。
+/// 与 Member 的分离是整套设计的支点：合成一张表就无法表达
+/// 「一人多社团」「换届留档」「毕业校友」三件事。
+model User {
+  id           BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  username     String  @unique @db.VarChar(64)
+  passwordHash String  @map("password_hash") @db.VarChar(100) // bcrypt，绝不存明文
+  realName     String  @map("real_name") @db.VarChar(32)
+  studentNo    String? @unique @map("student_no") @db.VarChar(32)
+  gender       Int     @default(0) // 0 未知 / 1 男 / 2 女
+  avatarUrl    String? @map("avatar_url") @db.VarChar(255)
+  phone        String? @db.VarChar(20)
+  email        String? @db.VarChar(64)
+  college      String? @db.VarChar(64)
+  major        String? @db.VarChar(64)
+  className    String? @map("class_name") @db.VarChar(32)
+  grade        String? @db.VarChar(8) // 2024
+  qq           String? @db.VarChar(20)
+  wechatOpenid String? @map("wechat_openid") @db.VarChar(64)
+
+  registerSource Int       @default(1) @map("register_source") // 1 管理员录入 / 2 自主注册
+  status         Int       @default(1) // 1 正常 / 2 禁用 / 3 待审核
+  lastLoginAt    DateTime? @map("last_login_at") @db.DateTime(3)
+  lastLoginIp    String?   @map("last_login_ip") @db.VarChar(45)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy BigInt?  @map("created_by") @db.UnsignedBigInt
+  updatedBy BigInt?  @map("updated_by") @db.UnsignedBigInt
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  members           Member[]
+  notificationInbox NotificationReceiver[]
+  uploadedFiles     FileItem[]
+
+  @@index([status])
+  @@map("user")
+}
+
+/// 成员档案。这个人在**某个社团某个届次**里的身份。
+model Member {
+  id       BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId   BigInt  @map("club_id") @db.UnsignedBigInt
+  userId   BigInt  @map("user_id") @db.UnsignedBigInt
+  termId   BigInt  @map("term_id") @db.UnsignedBigInt
+  deptId   BigInt? @map("dept_id") @db.UnsignedBigInt
+  memberNo String? @map("member_no") @db.VarChar(32) // CS-2024-018
+
+  position    Int       @default(6) // 1 社长 / 2 副社长 / 3 部长 / 4 副部长 / 5 干事 / 6 普通成员
+  joinDate    DateTime? @map("join_date") @db.Date
+  leaveDate   DateTime? @map("leave_date") @db.Date
+  leaveReason String?   @map("leave_reason") @db.VarChar(255)
+  status      Int       @default(1) // 1 在册 / 2 退会 / 3 毕业 / 4 冻结
+  isCore      Boolean   @default(false) @map("is_core")
+  /// 冗余缓存，以 point_record 流水为准，提供对账修复接口
+  totalPoints Int       @default(0) @map("total_points")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy BigInt?  @map("created_by") @db.UnsignedBigInt
+  updatedBy BigInt?  @map("updated_by") @db.UnsignedBigInt
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  user User        @relation(fields: [userId], references: [id])
+  term Term        @relation(fields: [termId], references: [id])
+  dept Department? @relation("MemberDept", fields: [deptId], references: [id])
+
+  ledDepartments Department[] @relation("DeptLeader")
+  roles          MemberRole[]
+
+  organizedActivities Activity[]             @relation("ActivityOrganizer")
+  registrations       ActivityRegistration[]
+  checkins            ActivityCheckin[]
+  leaves              ActivityLeave[]
+  tasks               ActivityTask[]
+
+  handledTxns  FundTransaction[] @relation("TxnHandler")
+  paidFees     MemberFee[]       @relation("FeePayer")
+  operatedFees MemberFee[]       @relation("FeeOperator")
+
+  approvalInstances ApprovalInstance[]
+  approvalTasks     ApprovalTask[]
+
+  publishedAnnouncements Announcement[]
+  dutySchedules          DutySchedule[]
+  dutyLogs               DutyLog[]
+  swapsOut               DutySwap[]           @relation("SwapFrom")
+  swapsIn                DutySwap[]           @relation("SwapTo")
+  availabilities         MemberAvailability[]
+  pointRecords           PointRecord[]
+  assessments            Assessment[]         @relation("AssessmentTarget")
+  evaluatedAssessments   Assessment[]         @relation("AssessmentEvaluator")
+  volunteerHours         VolunteerHour[]
+  convertedApplications  RecruitApplication[]
+  interviewSlots         InterviewSlot[]
+  interviewScores        InterviewScore[]
+  votes                  VoteRecord[]
+  borrows                AssetBorrow[]        @relation("BorrowOwner")
+  approvedBorrows        AssetBorrow[]        @relation("BorrowApprover")
+  bookings               VenueBooking[]       @relation("BookingOwner")
+  approvedBookings       VenueBooking[]       @relation("BookingApprover")
+
+  @@unique([clubId, userId, termId, deletedAt])
+  @@index([clubId, status])
+  @@index([deptId])
+  @@index([termId])
+  @@map("member")
+}
+
+// =============================================================================
+// 三、权限（RBAC + 数据范围）
+// =============================================================================
+
+/// 角色。关联的是 member 而非 user：同一个人在不同社团可以是不同角色。
+model Role {
+  id          BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId      BigInt  @map("club_id") @db.UnsignedBigInt
+  name        String  @db.VarChar(32)
+  code        String  @db.VarChar(32)
+  /// 数据范围：1 仅本人 / 2 本部门 / 3 本部门及以下 / 4 本社团 / 5 全部
+  dataScope   Int     @default(1) @map("data_scope")
+  description String? @db.VarChar(255)
+  isSystem    Boolean @default(false) @map("is_system")
+  sort        Int     @default(0)
+  status      Int     @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy BigInt?  @map("created_by") @db.UnsignedBigInt
+  updatedBy BigInt?  @map("updated_by") @db.UnsignedBigInt
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  members     MemberRole[]
+  permissions RolePermission[]
+
+  @@unique([clubId, code, deletedAt])
+  @@index([clubId, status])
+  @@map("role")
+}
+
+/// 权限点 / 菜单树。全局表，不带 clubId：权限点属于系统能力，角色才属于社团。
+model Permission {
+  id        BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  parentId  BigInt  @default(0) @map("parent_id") @db.UnsignedBigInt
+  name      String  @db.VarChar(32)
+  code      String  @unique @db.VarChar(64) // member:create
+  type      Int     @default(2) // 1 目录 / 2 菜单 / 3 按钮与接口
+  path      String? @db.VarChar(128)
+  component String? @db.VarChar(128)
+  icon      String? @db.VarChar(64)
+  sort      Int     @default(0)
+  status    Int     @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy BigInt?  @map("created_by") @db.UnsignedBigInt
+  updatedBy BigInt?  @map("updated_by") @db.UnsignedBigInt
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  children Permission[]     @relation("PermTree")
+  parent   Permission?      @relation("PermTree", fields: [parentId], references: [id])
+  roles    RolePermission[]
+
+  @@index([parentId])
+  @@map("permission")
+}
+
+model MemberRole {
+  id       BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  memberId BigInt @map("member_id") @db.UnsignedBigInt
+  roleId   BigInt @map("role_id") @db.UnsignedBigInt
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  member Member @relation(fields: [memberId], references: [id])
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  @@unique([memberId, roleId])
+  @@map("member_role")
+}
+
+model RolePermission {
+  id           BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  roleId       BigInt @map("role_id") @db.UnsignedBigInt
+  permissionId BigInt @map("permission_id") @db.UnsignedBigInt
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@map("role_permission")
+}
+
+// =============================================================================
+// 四、字典与配置
+// =============================================================================
+
+model SysDict {
+  id     BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  code   String  @unique @db.VarChar(64) // activity_type
+  name   String  @db.VarChar(64)
+  remark String? @db.VarChar(255)
+  status Int     @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  items SysDictItem[]
+
+  @@map("sys_dict")
+}
+
+model SysDictItem {
+  id        BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  dictId    BigInt  @map("dict_id") @db.UnsignedBigInt
+  label     String  @db.VarChar(64)
+  value     String  @db.VarChar(64)
+  sort      Int     @default(0)
+  color     String? @db.VarChar(16)
+  isDefault Boolean @default(false) @map("is_default")
+  status    Int     @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  dict SysDict @relation(fields: [dictId], references: [id])
+
+  @@index([dictId])
+  @@map("sys_dict_item")
+}
+
+/// 参数配置。clubId 为 null 表示全局参数。
+/// 有意用可空而非 0：0 无法通过外键校验，可空语义更清楚。
+model SysConfig {
+  id          BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId      BigInt? @map("club_id") @db.UnsignedBigInt
+  configKey   String  @map("config_key") @db.VarChar(64)
+  configValue String  @map("config_value") @db.VarChar(255)
+  name        String  @db.VarChar(64)
+  remark      String? @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  @@unique([clubId, configKey])
+  @@map("sys_config")
+}
+
+// =============================================================================
+// 五、审批流（横切能力）
+// 活动立项、经费支出、预算、请假、场地、换班、入会全部复用这四张表。
+// 业务表只存 approvalInstanceId，不要把「一级通过/二级通过」做成业务表的列。
+// =============================================================================
+
+model ApprovalFlow {
+  id          BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId      BigInt  @map("club_id") @db.UnsignedBigInt
+  code        String  @db.VarChar(32) // fund_expense
+  name        String  @db.VarChar(64)
+  bizType     String  @map("biz_type") @db.VarChar(32)
+  description String? @db.VarChar(255)
+  version     Int     @default(1) // 改流程不影响在途实例
+  status      Int     @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy BigInt?  @map("created_by") @db.UnsignedBigInt
+  updatedBy BigInt?  @map("updated_by") @db.UnsignedBigInt
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  nodes     ApprovalNode[]
+  instances ApprovalInstance[]
+
+  @@unique([clubId, code, version])
+  @@map("approval_flow")
+}
+
+model ApprovalNode {
+  id     BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  flowId BigInt @map("flow_id") @db.UnsignedBigInt
+  seq    Int    @default(1)
+  name   String @db.VarChar(32)
+
+  /// 1 指定角色 / 2 指定成员 / 3 部门负责人 / 4 直属上级
+  approverType   Int     @map("approver_type")
+  approverValue  String? @map("approver_value") @db.VarChar(64) // role_id 或 member_id
+  /// 1 或签（任一通过）/ 2 会签（全部通过）
+  approveMode    Int     @default(1) @map("approve_mode")
+  allowEmptySkip Boolean @default(false) @map("allow_empty_skip")
+  timeoutHours   Int     @default(0) @map("timeout_hours")
+  /// 1 提醒 / 2 自动通过 / 3 自动驳回 / 4 转交上级
+  timeoutAction  Int     @default(1) @map("timeout_action")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  flow  ApprovalFlow   @relation(fields: [flowId], references: [id])
+  tasks ApprovalTask[]
+
+  @@index([flowId, seq])
+  @@map("approval_node")
+}
+
+model ApprovalInstance {
+  id     BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId BigInt @map("club_id") @db.UnsignedBigInt
+  flowId BigInt @map("flow_id") @db.UnsignedBigInt
+
+  /// 多态关联：软引用，不建外键
+  bizType String @map("biz_type") @db.VarChar(32)
+  bizId   BigInt @map("biz_id") @db.UnsignedBigInt
+
+  title             String    @db.VarChar(128)
+  applicantMemberId BigInt    @map("applicant_member_id") @db.UnsignedBigInt
+  currentSeq        Int       @default(1) @map("current_seq")
+  status            Int       @default(1) // 1 审批中 / 2 已通过 / 3 已驳回 / 4 已撤销
+  formDataJson      Json?     @map("form_data_json")
+  submitAt          DateTime  @default(now()) @map("submit_at") @db.DateTime(3)
+  finishAt          DateTime? @map("finish_at") @db.DateTime(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  flow      ApprovalFlow   @relation(fields: [flowId], references: [id])
+  applicant Member         @relation(fields: [applicantMemberId], references: [id])
+  tasks     ApprovalTask[]
+
+  @@index([bizType, bizId])
+  @@index([applicantMemberId, status])
+  @@map("approval_instance")
+}
+
+model ApprovalTask {
+  id         BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  instanceId BigInt @map("instance_id") @db.UnsignedBigInt
+  nodeId     BigInt @map("node_id") @db.UnsignedBigInt
+  seq        Int
+
+  approverMemberId BigInt    @map("approver_member_id") @db.UnsignedBigInt
+  status           Int       @default(1) // 1 待审批 / 2 已同意 / 3 已拒绝 / 4 已转交 / 5 已超时
+  opinion          String?   @db.VarChar(500)
+  attachmentFileId BigInt?   @map("attachment_file_id") @db.UnsignedBigInt
+  /// 审批人 id，审计字段，不建关系
+  delegateFrom     BigInt?   @map("delegate_from") @db.UnsignedBigInt
+  handledAt        DateTime? @map("handled_at") @db.DateTime(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  instance ApprovalInstance @relation(fields: [instanceId], references: [id])
+  node     ApprovalNode     @relation(fields: [nodeId], references: [id])
+  approver Member           @relation(fields: [approverMemberId], references: [id])
+
+  @@index([instanceId, status])
+  @@index([approverMemberId, status])
+  @@map("approval_task")
+}
+
+// =============================================================================
+// 六、活动
+// =============================================================================
+
+model ActivityCategory {
+  id     BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId BigInt  @map("club_id") @db.UnsignedBigInt
+  name   String  @db.VarChar(32)
+  color  String? @db.VarChar(16)
+  sort   Int     @default(0)
+  status Int     @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  activities Activity[]
+
+  @@index([clubId, status])
+  @@map("activity_category")
+}
+
+model Activity {
+  id         BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId     BigInt  @map("club_id") @db.UnsignedBigInt
+  categoryId BigInt? @map("category_id") @db.UnsignedBigInt
+  termId     BigInt? @map("term_id") @db.UnsignedBigInt
+
+  title    String  @db.VarChar(128)
+  coverUrl String? @map("cover_url") @db.VarChar(255)
+  summary  String? @db.VarChar(255)
+  content  String? @db.Text
+  location String? @db.VarChar(128)
+
+  startTime   DateTime  @map("start_time") @db.DateTime(3)
+  endTime     DateTime  @map("end_time") @db.DateTime(3)
+  signupStart DateTime? @map("signup_start") @db.DateTime(3)
+  signupEnd   DateTime? @map("signup_end") @db.DateTime(3)
+
+  capacity   Int     @default(0) // 0 = 不限
+  minMembers Int     @default(0) @map("min_members")
+  needAudit  Boolean @default(false) @map("need_audit")
+  allowGuest Boolean @default(false) @map("allow_guest")
+
+  organizerMemberId BigInt? @map("organizer_member_id") @db.UnsignedBigInt
+  contactInfo       String? @map("contact_info") @db.VarChar(128)
+
+  /// 1 动态二维码 / 2 数字口令 / 3 位置围栏 / 4 管理员代签
+  checkinType  Int       @default(1) @map("checkin_type")
+  checkinStart DateTime? @map("checkin_start") @db.DateTime(3)
+  checkinEnd   DateTime? @map("checkin_end") @db.DateTime(3)
+  /// 防代签：前端每 qrRefreshSec 秒用「密钥 + 时间片」生成新二维码，截图转发即失效
+  qrSecret     String?   @map("qr_secret") @db.VarChar(64)
+  qrRefreshSec Int       @default(30) @map("qr_refresh_sec")
+
+  points         Int     @default(0)
+  volunteerHours Decimal @default(0) @map("volunteer_hours") @db.Decimal(6, 1)
+  budgetAmount   Decimal @default(0) @map("budget_amount") @db.Decimal(12, 2)
+  actualAmount   Decimal @default(0) @map("actual_amount") @db.Decimal(12, 2)
+
+  /// 1 草稿 / 2 待审批 / 3 报名中 / 4 报名结束 / 5 进行中 / 6 已结束 / 7 已取消
+  status             Int     @default(1)
+  /// 软引用，指向 approval_instance
+  approvalInstanceId BigInt? @map("approval_instance_id") @db.UnsignedBigInt
+  summaryReport      String? @map("summary_report") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy BigInt?  @map("created_by") @db.UnsignedBigInt
+  updatedBy BigInt?  @map("updated_by") @db.UnsignedBigInt
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  category  ActivityCategory? @relation(fields: [categoryId], references: [id])
+  term      Term?             @relation(fields: [termId], references: [id])
+  organizer Member?           @relation("ActivityOrganizer", fields: [organizerMemberId], references: [id])
+
+  registrations      ActivityRegistration[]
+  checkins           ActivityCheckin[]
+  leaves             ActivityLeave[]
+  photos             ActivityPhoto[]
+  tasks              ActivityTask[]
+  volunteerHoursRows VolunteerHour[]
+
+  @@index([clubId, status, startTime])
+  @@index([termId])
+  @@map("activity")
+}
+
+model ActivityRegistration {
+  id         BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId     BigInt  @map("club_id") @db.UnsignedBigInt
+  activityId BigInt  @map("activity_id") @db.UnsignedBigInt
+  /// 允许非成员报名，故 memberId 可空；userId 用于兜底
+  memberId   BigInt? @map("member_id") @db.UnsignedBigInt
+  userId     BigInt? @map("user_id") @db.UnsignedBigInt
+
+  guestName   String?   @map("guest_name") @db.VarChar(32)
+  guestPhone  String?   @map("guest_phone") @db.VarChar(20)
+  applyAt     DateTime  @default(now()) @map("apply_at") @db.DateTime(3)
+  /// 1 待审核 / 2 已通过 / 3 已拒绝 / 4 已取消
+  status      Int       @default(1)
+  auditBy     BigInt?   @map("audit_by") @db.UnsignedBigInt
+  auditAt     DateTime? @map("audit_at") @db.DateTime(3)
+  auditRemark String?   @map("audit_remark") @db.VarChar(255)
+  remark      String?   @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  activity Activity         @relation(fields: [activityId], references: [id])
+  member   Member?          @relation(fields: [memberId], references: [id])
+  checkin  ActivityCheckin?
+
+  @@unique([activityId, memberId, deletedAt])
+  @@index([activityId, status])
+  @@map("activity_registration")
+}
+
+/// 一张表同时承载签到与签退，比拆两张表更贴合「一次出勤」的语义。
+model ActivityCheckin {
+  id             BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId         BigInt  @map("club_id") @db.UnsignedBigInt
+  activityId     BigInt  @map("activity_id") @db.UnsignedBigInt
+  /// 一对一：一次报名最多一条签到；散客现场签到可为空。
+  /// MySQL 唯一索引不比较 NULL，故可空列加唯一约束不会互相冲突。
+  registrationId BigInt? @unique @map("registration_id") @db.UnsignedBigInt
+  memberId       BigInt  @map("member_id") @db.UnsignedBigInt
+
+  checkinTime DateTime? @map("checkin_time") @db.DateTime(3)
+  checkinType Int       @default(1) @map("checkin_type")
+  checkinLat  Decimal?  @map("checkin_lat") @db.Decimal(10, 7)
+  checkinLng  Decimal?  @map("checkin_lng") @db.Decimal(10, 7)
+  checkinIp   String?   @map("checkin_ip") @db.VarChar(45)
+  deviceInfo  String?   @map("device_info") @db.VarChar(255)
+
+  signoutTime  DateTime? @map("signout_time") @db.DateTime(3)
+  durationMin  Int?      @map("duration_min")
+  /// 1 正常 / 2 迟到 / 3 早退 / 4 缺勤
+  status       Int       @default(1)
+  isMakeup     Boolean   @default(false) @map("is_makeup")
+  makeupBy     BigInt?   @map("makeup_by") @db.UnsignedBigInt
+  makeupReason String?   @map("makeup_reason") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  activity     Activity              @relation(fields: [activityId], references: [id])
+  registration ActivityRegistration? @relation(fields: [registrationId], references: [id])
+  member       Member                @relation(fields: [memberId], references: [id])
+
+  @@unique([activityId, memberId, deletedAt])
+  @@index([activityId, status])
+  @@map("activity_checkin")
+}
+
+/// 请假与报名状态是两条独立记录，不合并：
+/// 「已报名 + 已请假」是合法且常见的状态组合。
+model ActivityLeave {
+  id         BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId     BigInt @map("club_id") @db.UnsignedBigInt
+  activityId BigInt @map("activity_id") @db.UnsignedBigInt
+  memberId   BigInt @map("member_id") @db.UnsignedBigInt
+
+  reason           String    @db.VarChar(500)
+  attachmentFileId BigInt?   @map("attachment_file_id") @db.UnsignedBigInt
+  /// 1 待审批 / 2 已批准 / 3 已驳回
+  status           Int       @default(1)
+  auditBy          BigInt?   @map("audit_by") @db.UnsignedBigInt
+  auditAt          DateTime? @map("audit_at") @db.DateTime(3)
+  auditRemark      String?   @map("audit_remark") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  activity Activity @relation(fields: [activityId], references: [id])
+  member   Member   @relation(fields: [memberId], references: [id])
+
+  @@unique([activityId, memberId, deletedAt])
+  @@map("activity_leave")
+}
+
+// =============================================================================
+// 七、经费
+// =============================================================================
+
+/// 经费账户。**不存余额字段**：余额一律由流水 SUM 得出，社团级数据量下是
+/// 微秒级，永远不会算错；维护余额字段要处理并发、作废冲正、历史修正，是 bug 温床。
+model FundAccount {
+  id            BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId        BigInt  @map("club_id") @db.UnsignedBigInt
+  name          String  @db.VarChar(32)
+  accountNo     String? @map("account_no") @db.VarChar(32)
+  initialAmount Decimal @default(0) @map("initial_amount") @db.Decimal(12, 2)
+  isDefault     Boolean @default(false) @map("is_default")
+  status        Int     @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy BigInt?  @map("created_by") @db.UnsignedBigInt
+  updatedBy BigInt?  @map("updated_by") @db.UnsignedBigInt
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  transactions FundTransaction[]
+
+  @@index([clubId, status])
+  @@map("fund_account")
+}
+
+model FundCategory {
+  id       BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId   BigInt @map("club_id") @db.UnsignedBigInt
+  parentId BigInt @default(0) @map("parent_id") @db.UnsignedBigInt
+  name     String @db.VarChar(32)
+  /// 1 收入科目 / 2 支出科目
+  type     Int
+  sort     Int    @default(0)
+  status   Int    @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  children     FundCategory[]    @relation("FundCatTree")
+  parent       FundCategory?     @relation("FundCatTree", fields: [parentId], references: [id])
+  transactions FundTransaction[]
+  budgets      FundBudget[]
+
+  @@index([clubId, type, status])
+  @@map("fund_category")
+}
+
+/// 经费流水。金额恒为正数，方向由 type 决定：
+/// 避免「支出 -50」与「收入 50」两种等价写法混用导致 SUM 出错。
+/// 作废只能改 status，**绝不物理删除**（财务留痕要求）。
+model FundTransaction {
+  id         BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId     BigInt  @map("club_id") @db.UnsignedBigInt
+  accountId  BigInt  @map("account_id") @db.UnsignedBigInt
+  categoryId BigInt? @map("category_id") @db.UnsignedBigInt
+  termId     BigInt? @map("term_id") @db.UnsignedBigInt
+
+  /// 1 收入 / 2 支出
+  type       Int
+  amount     Decimal  @db.Decimal(12, 2)
+  title      String   @db.VarChar(128)
+  occurredAt DateTime @map("occurred_at") @db.Date
+
+  /// 多态关联：member_fee / activity / asset
+  bizType String? @map("biz_type") @db.VarChar(32)
+  bizId   BigInt? @map("biz_id") @db.UnsignedBigInt
+
+  handlerMemberId    BigInt? @map("handler_member_id") @db.UnsignedBigInt
+  /// 1 待审批 / 2 已入账 / 3 已作废
+  status             Int     @default(2)
+  approvalInstanceId BigInt? @map("approval_instance_id") @db.UnsignedBigInt
+  voidReason         String? @map("void_reason") @db.VarChar(255)
+  remark             String? @db.VarChar(500)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy BigInt?  @map("created_by") @db.UnsignedBigInt
+  updatedBy BigInt?  @map("updated_by") @db.UnsignedBigInt
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  account  FundAccount   @relation(fields: [accountId], references: [id])
+  category FundCategory? @relation(fields: [categoryId], references: [id])
+  term     Term?         @relation(fields: [termId], references: [id])
+  handler  Member?       @relation("TxnHandler", fields: [handlerMemberId], references: [id])
+  vouchers FundVoucher[]
+
+  @@index([clubId, occurredAt])
+  @@index([bizType, bizId])
+  @@index([accountId])
+  @@map("fund_transaction")
+}
+
+// =============================================================================
+// 八、审计日志
+// 日志表不建外键、不设更新字段：写入量大，且日志自身完整性不依赖业务表。
+// =============================================================================
+
+/// 操作日志。before_value / after_value 是财务不可篡改与权限变更可追溯的依据。
+model OperationLog {
+  id       BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId   BigInt? @map("club_id") @db.UnsignedBigInt
+  userId   BigInt? @map("user_id") @db.UnsignedBigInt
+  memberId BigInt? @map("member_id") @db.UnsignedBigInt
+
+  module  String? @db.VarChar(32)
+  action  String? @db.VarChar(32)
+  bizType String? @map("biz_type") @db.VarChar(32)
+  bizId   BigInt? @map("biz_id") @db.UnsignedBigInt
+
+  requestUri    String? @map("request_uri") @db.VarChar(255)
+  requestMethod String? @map("request_method") @db.VarChar(8)
+  /// 入参必须自动脱敏 password 等字段
+  requestParams Json?   @map("request_params")
+  beforeValue   Json?   @map("before_value")
+  afterValue    Json?   @map("after_value")
+
+  ip         String? @db.VarChar(45)
+  userAgent  String? @map("user_agent") @db.VarChar(255)
+  durationMs Int?    @map("duration_ms")
+  status     Int     @default(1) // 1 成功 / 2 失败
+  errorMsg   String? @map("error_msg") @db.VarChar(500)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@index([clubId, createdAt])
+  @@index([bizType, bizId])
+  @@index([userId, createdAt])
+  @@map("operation_log")
+}
+
+model LoginLog {
+  id       BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  userId   BigInt? @map("user_id") @db.UnsignedBigInt
+  username String? @db.VarChar(64)
+  ip       String? @db.VarChar(45)
+  location String? @db.VarChar(64)
+  browser  String? @db.VarChar(64)
+  os       String? @db.VarChar(64)
+  status   Int     @default(1) // 1 成功 / 2 失败
+  msg      String? @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@index([userId, createdAt])
+  @@map("login_log")
+}
+
+// =============================================================================
+// 九、公告与通知（P1）
+// =============================================================================
+
+model Announcement {
+  id                BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId            BigInt    @map("club_id") @db.UnsignedBigInt
+  title             String    @db.VarChar(128)
+  content           String    @db.Text
+  /// 1 通知 / 2 公告 / 3 新闻
+  type              Int       @default(2)
+  coverUrl          String?   @map("cover_url") @db.VarChar(255)
+  isTop             Boolean   @default(false) @map("is_top")
+  /// 1 草稿 / 2 已发布 / 3 已撤回
+  publishStatus     Int       @default(1) @map("publish_status")
+  publishAt         DateTime? @map("publish_at") @db.DateTime(3)
+  expireAt          DateTime? @map("expire_at") @db.DateTime(3)
+  /// 定向可见范围：部门 / 角色 / 成员
+  targetScope       Json?     @map("target_scope")
+  publisherMemberId BigInt?   @map("publisher_member_id") @db.UnsignedBigInt
+  viewCount         Int       @default(0) @map("view_count")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  publisher Member? @relation(fields: [publisherMemberId], references: [id])
+
+  @@index([clubId, publishStatus, publishAt])
+  @@map("announcement")
+}
+
+/// 通知主体：一条通知发给多人，正文只存一份。
+/// 已读状态逐人记录在 NotificationReceiver，不因人数增长而重复存正文。
+model Notification {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId      BigInt    @map("club_id") @db.UnsignedBigInt
+  title       String    @db.VarChar(128)
+  content     String    @db.Text
+  /// 1 系统 / 2 活动 / 3 审批 / 4 财务 / 5 值班 / 6 公告
+  type        Int       @default(1)
+  bizType     String?   @map("biz_type") @db.VarChar(32)
+  bizId       BigInt?   @map("biz_id") @db.UnsignedBigInt
+  senderId    BigInt?   @map("sender_id") @db.UnsignedBigInt
+  /// 渠道开关：站内 / 邮件 / 企业微信 / 钉钉 / 短信
+  channelJson Json?     @map("channel_json")
+  sendTime    DateTime? @map("send_time") @db.DateTime(3)
+  status      Int       @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  receivers NotificationReceiver[]
+
+  @@index([clubId, type, createdAt])
+  @@map("notification")
+}
+
+model NotificationReceiver {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  notificationId BigInt    @map("notification_id") @db.UnsignedBigInt
+  receiverUserId BigInt    @map("receiver_user_id") @db.UnsignedBigInt
+  isRead         Boolean   @default(false) @map("is_read")
+  readAt         DateTime? @map("read_at") @db.DateTime(3)
+  isDeleted      Boolean   @default(false) @map("is_deleted")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  notification Notification @relation(fields: [notificationId], references: [id])
+  receiver     User         @relation(fields: [receiverUserId], references: [id])
+
+  @@unique([notificationId, receiverUserId])
+  @@index([receiverUserId, isRead])
+  @@map("notification_receiver")
+}
+
+model NotificationTemplate {
+  id          BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId      BigInt? @map("club_id") @db.UnsignedBigInt
+  code        String  @db.VarChar(64)
+  name        String  @db.VarChar(64)
+  titleTpl    String  @map("title_tpl") @db.VarChar(255)
+  contentTpl  String  @map("content_tpl") @db.Text
+  channelMask Int     @default(1) @map("channel_mask")
+  status      Int     @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  @@unique([clubId, code])
+  @@map("notification_template")
+}
+
+model MessageChannelConfig {
+  id         BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId     BigInt @map("club_id") @db.UnsignedBigInt
+  /// 1 邮件 / 2 企业微信 / 3 钉钉 / 4 短信
+  channel    Int
+  configJson Json   @map("config_json") // webhook 地址、密钥等
+  status     Int    @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  @@unique([clubId, channel])
+  @@map("message_channel_config")
+}
+
+// =============================================================================
+// 十、文件共享（P1）
+// =============================================================================
+
+model FileFolder {
+  id          BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId      BigInt  @map("club_id") @db.UnsignedBigInt
+  parentId    BigInt  @default(0) @map("parent_id") @db.UnsignedBigInt
+  name        String  @db.VarChar(64)
+  /// 1 公开 / 2 成员 / 3 部门 / 4 角色 / 5 私有
+  scope       Int     @default(2)
+  ownerDeptId BigInt? @map("owner_dept_id") @db.UnsignedBigInt
+  sort        Int     @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  createdBy BigInt?  @map("created_by") @db.UnsignedBigInt
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  children FileFolder[] @relation("FolderTree")
+  parent   FileFolder?  @relation("FolderTree", fields: [parentId], references: [id])
+  files    FileItem[]
+
+  @@index([clubId, parentId])
+  @@map("file_folder")
+}
+
+/// 文件元数据。模型名用 FileItem 而非 File，避开 Node/TS 的全局 File 类型。
+/// 版本管理：同一份材料多次上传共享 fileGroupId，version 递增，
+/// 只有 isLatest = 1 的那条是当前版本，旧版本保留可追溯。
+model FileItem {
+  id            BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId        BigInt  @map("club_id") @db.UnsignedBigInt
+  folderId      BigInt? @map("folder_id") @db.UnsignedBigInt
+  name          String  @db.VarChar(255)
+  originalName  String  @map("original_name") @db.VarChar(255)
+  ext           String? @db.VarChar(16)
+  mimeType      String? @map("mime_type") @db.VarChar(128)
+  size          BigInt  @db.UnsignedBigInt
+  /// 1 本地磁盘 / 2 对象存储
+  storageType   Int     @default(1) @map("storage_type")
+  storagePath   String  @map("storage_path") @db.VarChar(500)
+  /// MD5，用于秒传：上传前先查是否已存在
+  md5           String? @db.VarChar(32)
+  fileGroupId   BigInt? @map("file_group_id") @db.UnsignedBigInt
+  version       Int     @default(1)
+  isLatest      Boolean @default(true) @map("is_latest")
+  downloadCount Int     @default(0) @map("download_count")
+
+  /// 多态关联：活动封面、审批附件、凭证等
+  bizType String? @map("biz_type") @db.VarChar(32)
+  bizId   BigInt? @map("biz_id") @db.UnsignedBigInt
+
+  /// 1 公开 / 2 成员 / 3 部门 / 4 角色 / 5 私有
+  scope      Int     @default(2)
+  uploaderId BigInt? @map("uploader_id") @db.UnsignedBigInt
+  status     Int     @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  folder   FileFolder? @relation(fields: [folderId], references: [id])
+  uploader User?       @relation(fields: [uploaderId], references: [id])
+  grants   FileGrant[]
+
+  @@index([clubId, folderId])
+  @@index([md5])
+  @@index([bizType, bizId])
+  @@map("file")
+}
+
+model FileGrant {
+  id          BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  fileId      BigInt  @map("file_id") @db.UnsignedBigInt
+  /// 1 部门 / 2 角色 / 3 成员
+  targetType  Int     @map("target_type")
+  targetId    BigInt  @map("target_id") @db.UnsignedBigInt
+  canRead     Boolean @default(true) @map("can_read")
+  canWrite    Boolean @default(false) @map("can_write")
+  canDownload Boolean @default(true) @map("can_download")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  file FileItem @relation(fields: [fileId], references: [id])
+
+  @@unique([fileId, targetType, targetId])
+  @@map("file_grant")
+}
+
+// =============================================================================
+// 十一、物资与场地（P1）
+// =============================================================================
+
+model Asset {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId         BigInt    @map("club_id") @db.UnsignedBigInt
+  code           String?   @db.VarChar(32)
+  name           String    @db.VarChar(64)
+  category       String?   @db.VarChar(32)
+  spec           String?   @db.VarChar(64)
+  unit           String?   @db.VarChar(16)
+  totalQty       Int       @default(0) @map("total_qty")
+  /// 冗余缓存，以 asset_borrow 未归还数量为准
+  availableQty   Int       @default(0) @map("available_qty")
+  location       String?   @map("location") @db.VarChar(64)
+  purchaseDate   DateTime? @map("purchase_date") @db.Date
+  price          Decimal?  @db.Decimal(12, 2)
+  keeperMemberId BigInt?   @map("keeper_member_id") @db.UnsignedBigInt
+  status         Int       @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  borrows AssetBorrow[]
+
+  @@index([clubId, status])
+  @@map("asset")
+}
+
+model AssetBorrow {
+  id       BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId   BigInt @map("club_id") @db.UnsignedBigInt
+  assetId  BigInt @map("asset_id") @db.UnsignedBigInt
+  memberId BigInt @map("member_id") @db.UnsignedBigInt
+  qty      Int
+
+  borrowTime       DateTime  @map("borrow_time") @db.DateTime(3)
+  expectReturnTime DateTime? @map("expect_return_time") @db.DateTime(3)
+  actualReturnTime DateTime? @map("actual_return_time") @db.DateTime(3)
+  /// 1 申请中 / 2 已借出 / 3 已归还 / 4 逾期 / 5 损坏
+  status           Int       @default(1)
+  approverMemberId BigInt?   @map("approver_member_id") @db.UnsignedBigInt
+  remark           String?   @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  asset    Asset   @relation(fields: [assetId], references: [id])
+  member   Member  @relation("BorrowOwner", fields: [memberId], references: [id])
+  approver Member? @relation("BorrowApprover", fields: [approverMemberId], references: [id])
+
+  @@index([clubId, status])
+  @@index([assetId])
+  @@map("asset_borrow")
+}
+
+model Venue {
+  id           BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId       BigInt  @map("club_id") @db.UnsignedBigInt
+  name         String  @db.VarChar(64)
+  location     String? @db.VarChar(128)
+  capacity     Int     @default(0)
+  openWeekdays String? @map("open_weekdays") @db.VarChar(32)
+  openTime     String? @map("open_time") @db.VarChar(8)
+  closeTime    String? @map("close_time") @db.VarChar(8)
+  status       Int     @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  bookings VenueBooking[]
+
+  @@index([clubId, status])
+  @@map("venue")
+}
+
+/// 场地预约必须做区间重叠检测：同一 venue + bookDate 下，
+/// [startTime, endTime) 不得与已通过记录重叠。服务层加悲观锁兜底。
+model VenueBooking {
+  id         BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId     BigInt  @map("club_id") @db.UnsignedBigInt
+  venueId    BigInt  @map("venue_id") @db.UnsignedBigInt
+  activityId BigInt? @map("activity_id") @db.UnsignedBigInt
+  memberId   BigInt  @map("member_id") @db.UnsignedBigInt
+
+  bookDate         DateTime @map("book_date") @db.Date
+  startTime        String   @map("start_time") @db.VarChar(8)
+  endTime          String   @map("end_time") @db.VarChar(8)
+  purpose          String?  @db.VarChar(255)
+  /// 1 待审批 / 2 已通过 / 3 已驳回 / 4 已取消
+  status           Int      @default(1)
+  approverMemberId BigInt?  @map("approver_member_id") @db.UnsignedBigInt
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  venue    Venue   @relation(fields: [venueId], references: [id])
+  member   Member  @relation("BookingOwner", fields: [memberId], references: [id])
+  approver Member? @relation("BookingApprover", fields: [approverMemberId], references: [id])
+
+  @@index([venueId, bookDate, status])
+  @@map("venue_booking")
+}
+
+// =============================================================================
+// 十二、值班（P1）
+// =============================================================================
+
+model DutyPlan {
+  id            BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId        BigInt   @map("club_id") @db.UnsignedBigInt
+  termId        BigInt   @map("term_id") @db.UnsignedBigInt
+  name          String   @db.VarChar(64)
+  startDate     DateTime @map("start_date") @db.Date
+  endDate       DateTime @map("end_date") @db.Date
+  /// 1 草稿 / 2 已发布
+  publishStatus Int      @default(1) @map("publish_status")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  term      Term           @relation(fields: [termId], references: [id])
+  schedules DutySchedule[]
+
+  @@index([clubId, termId])
+  @@map("duty_plan")
+}
+
+model DutySchedule {
+  id     BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  planId BigInt @map("plan_id") @db.UnsignedBigInt
+  clubId BigInt @map("club_id") @db.UnsignedBigInt
+
+  dutyDate  DateTime @map("duty_date") @db.Date
+  weekday   Int
+  startTime String   @map("start_time") @db.VarChar(8)
+  endTime   String   @map("end_time") @db.VarChar(8)
+  location  String?  @db.VarChar(64)
+  memberId  BigInt   @map("member_id") @db.UnsignedBigInt
+
+  /// 1 待确认 / 2 已确认 / 3 已换班 / 4 已完成 / 5 缺勤
+  status        Int       @default(1)
+  checkinTime   DateTime? @map("checkin_time") @db.DateTime(3)
+  checkinLat    Decimal?  @map("checkin_lat") @db.Decimal(10, 7)
+  checkinLng    Decimal?  @map("checkin_lng") @db.Decimal(10, 7)
+  actualMinutes Int?      @map("actual_minutes")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  plan   DutyPlan   @relation(fields: [planId], references: [id])
+  member Member     @relation(fields: [memberId], references: [id])
+  logs   DutyLog[]
+  swaps  DutySwap[]
+
+  @@index([clubId, dutyDate])
+  @@index([memberId, dutyDate])
+  @@map("duty_schedule")
+}
+
+model DutyLog {
+  id               BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  scheduleId       BigInt  @map("schedule_id") @db.UnsignedBigInt
+  memberId         BigInt  @map("member_id") @db.UnsignedBigInt
+  content          String  @db.Text
+  handoverContent  String? @map("handover_content") @db.Text
+  attachmentFileId BigInt? @map("attachment_file_id") @db.UnsignedBigInt
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  schedule DutySchedule @relation(fields: [scheduleId], references: [id])
+  member   Member       @relation(fields: [memberId], references: [id])
+
+  @@index([scheduleId])
+  @@map("duty_log")
+}
+
+model DutySwap {
+  id           BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  scheduleId   BigInt @map("schedule_id") @db.UnsignedBigInt
+  fromMemberId BigInt @map("from_member_id") @db.UnsignedBigInt
+  toMemberId   BigInt @map("to_member_id") @db.UnsignedBigInt
+
+  reason           String    @db.VarChar(255)
+  /// 1 待审批 / 2 已通过 / 3 已驳回 / 4 已撤销
+  status           Int       @default(1)
+  approverMemberId BigInt?   @map("approver_member_id") @db.UnsignedBigInt
+  approvedAt       DateTime? @map("approved_at") @db.DateTime(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  schedule   DutySchedule @relation(fields: [scheduleId], references: [id])
+  fromMember Member       @relation("SwapFrom", fields: [fromMemberId], references: [id])
+  toMember   Member       @relation("SwapTo", fields: [toMemberId], references: [id])
+
+  @@index([scheduleId])
+  @@map("duty_swap")
+}
+
+/// 自动排班的输入：成员填报自己的空闲时段，系统按班次需求做匹配推荐。
+model MemberAvailability {
+  id        BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId    BigInt @map("club_id") @db.UnsignedBigInt
+  memberId  BigInt @map("member_id") @db.UnsignedBigInt
+  termId    BigInt @map("term_id") @db.UnsignedBigInt
+  weekday   Int
+  startTime String @map("start_time") @db.VarChar(8)
+  endTime   String @map("end_time") @db.VarChar(8)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  member Member @relation(fields: [memberId], references: [id])
+  term   Term   @relation(fields: [termId], references: [id])
+
+  @@index([clubId, termId, weekday])
+  @@map("member_availability")
+}
+
+// =============================================================================
+// 十三、预算、会费与凭证（P1）
+// =============================================================================
+
+model FundBudget {
+  id         BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId     BigInt  @map("club_id") @db.UnsignedBigInt
+  termId     BigInt? @map("term_id") @db.UnsignedBigInt
+  activityId BigInt? @map("activity_id") @db.UnsignedBigInt
+  categoryId BigInt? @map("category_id") @db.UnsignedBigInt
+
+  name               String    @db.VarChar(64)
+  amount             Decimal   @db.Decimal(12, 2)
+  /// 冗余缓存，以关联流水汇总为准
+  usedAmount         Decimal   @default(0) @map("used_amount") @db.Decimal(12, 2)
+  periodStart        DateTime? @map("period_start") @db.Date
+  periodEnd          DateTime? @map("period_end") @db.Date
+  /// 1 草稿 / 2 审批中 / 3 已通过 / 4 已驳回 / 5 已关闭
+  status             Int       @default(1)
+  approvalInstanceId BigInt?   @map("approval_instance_id") @db.UnsignedBigInt
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  term     Term?         @relation(fields: [termId], references: [id])
+  category FundCategory? @relation(fields: [categoryId], references: [id])
+
+  @@index([clubId, status])
+  @@map("fund_budget")
+}
+
+/// 流水凭证附件，一笔流水可挂多张（发票、收据、转账截图）。
+model FundVoucher {
+  id            BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  transactionId BigInt @map("transaction_id") @db.UnsignedBigInt
+  fileId        BigInt @map("file_id") @db.UnsignedBigInt
+  sort          Int    @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  transaction FundTransaction @relation(fields: [transactionId], references: [id])
+
+  @@index([transactionId])
+  @@map("fund_voucher")
+}
+
+/// 会费标准 = 应收。定义某个届次应缴多少、截止日期、面向哪些人。
+model MemberFeeStandard {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId     BigInt   @map("club_id") @db.UnsignedBigInt
+  termId     BigInt   @map("term_id") @db.UnsignedBigInt
+  name       String   @db.VarChar(64)
+  amount     Decimal  @db.Decimal(12, 2)
+  dueDate    DateTime @map("due_date") @db.Date
+  /// 1 全体 / 2 部门 / 3 指定成员
+  targetType Int      @default(1) @map("target_type")
+  targetIds  Json?    @map("target_ids")
+  status     Int      @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  term Term        @relation(fields: [termId], references: [id])
+  fees MemberFee[]
+
+  @@index([clubId, termId])
+  @@map("member_fee_standard")
+}
+
+/// 会费缴纳记录 = 实收。欠费名单 = 应缴名单 LEFT JOIN 本表 WHERE status IN (1,2)。
+/// 缴费成功后自动写一条 fund_transaction（收入，bizType = member_fee），
+/// 使财务账与会费台账天然一致。
+model MemberFee {
+  id            BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId        BigInt @map("club_id") @db.UnsignedBigInt
+  feeStandardId BigInt @map("fee_standard_id") @db.UnsignedBigInt
+  memberId      BigInt @map("member_id") @db.UnsignedBigInt
+
+  shouldAmount     Decimal   @map("should_amount") @db.Decimal(12, 2)
+  paidAmount       Decimal   @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  paidAt           DateTime? @map("paid_at") @db.DateTime(3)
+  /// 1 现金 / 2 微信 / 3 支付宝 / 4 银行转账
+  payMethod        Int?      @map("pay_method")
+  voucherFileId    BigInt?   @map("voucher_file_id") @db.UnsignedBigInt
+  /// 1 未缴 / 2 部分缴纳 / 3 已缴清 / 4 已减免
+  status           Int       @default(1)
+  operatorMemberId BigInt?   @map("operator_member_id") @db.UnsignedBigInt
+  remark           String?   @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  standard MemberFeeStandard @relation(fields: [feeStandardId], references: [id])
+  member   Member            @relation("FeePayer", fields: [memberId], references: [id])
+  operator Member?           @relation("FeeOperator", fields: [operatorMemberId], references: [id])
+
+  @@unique([feeStandardId, memberId])
+  @@index([clubId, status])
+  @@map("member_fee")
+}
+
+// =============================================================================
+// 十四、积分（P1）
+// =============================================================================
+
+model PointRule {
+  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId     BigInt    @map("club_id") @db.UnsignedBigInt
+  code       String    @db.VarChar(32)
+  name       String    @db.VarChar(64)
+  /// 1 签到 / 2 参与活动 / 3 值班 / 4 贡献 / 5 违规
+  eventType  Int       @map("event_type")
+  points     Int
+  /// 每学期上限，0 = 不限，避免刷分
+  maxPerTerm Int       @default(0) @map("max_per_term")
+  validFrom  DateTime? @map("valid_from") @db.Date
+  validTo    DateTime? @map("valid_to") @db.Date
+  status     Int       @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  records PointRecord[]
+
+  @@unique([clubId, code])
+  @@map("point_rule")
+}
+
+/// 积分一律走流水，member.totalPoints 只是缓存，须能由本表重算。
+model PointRecord {
+  id       BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId   BigInt  @map("club_id") @db.UnsignedBigInt
+  memberId BigInt  @map("member_id") @db.UnsignedBigInt
+  termId   BigInt? @map("term_id") @db.UnsignedBigInt
+  ruleId   BigInt? @map("rule_id") @db.UnsignedBigInt
+
+  /// 可正可负
+  points     Int
+  reason     String?  @db.VarChar(255)
+  bizType    String?  @map("biz_type") @db.VarChar(32)
+  bizId      BigInt?  @map("biz_id") @db.UnsignedBigInt
+  occurredAt DateTime @map("occurred_at") @db.DateTime(3)
+  /// 操作人 id，审计字段，不建关系
+  operatorId BigInt?  @map("operator_id") @db.UnsignedBigInt
+  status     Int      @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  member Member     @relation(fields: [memberId], references: [id])
+  term   Term?      @relation(fields: [termId], references: [id])
+  rule   PointRule? @relation(fields: [ruleId], references: [id])
+
+  @@index([clubId, memberId])
+  @@index([termId])
+  @@map("point_record")
+}
+
+// =============================================================================
+// 十五、考核与志愿时长（P2）
+// =============================================================================
+
+model Assessment {
+  id       BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId   BigInt @map("club_id") @db.UnsignedBigInt
+  termId   BigInt @map("term_id") @db.UnsignedBigInt
+  memberId BigInt @map("member_id") @db.UnsignedBigInt
+
+  attendanceScore   Decimal? @map("attendance_score") @db.Decimal(5, 2)
+  activityScore     Decimal? @map("activity_score") @db.Decimal(5, 2)
+  dutyScore         Decimal? @map("duty_score") @db.Decimal(5, 2)
+  contributionScore Decimal? @map("contribution_score") @db.Decimal(5, 2)
+  totalScore        Decimal? @map("total_score") @db.Decimal(5, 2)
+  /// 优秀 / 良好 / 合格 / 不合格
+  grade             String?  @db.VarChar(16)
+  comment           String?  @db.VarChar(500)
+  evaluatorMemberId BigInt?  @map("evaluator_member_id") @db.UnsignedBigInt
+  status            Int      @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  term      Term    @relation(fields: [termId], references: [id])
+  member    Member  @relation("AssessmentTarget", fields: [memberId], references: [id])
+  evaluator Member? @relation("AssessmentEvaluator", fields: [evaluatorMemberId], references: [id])
+
+  @@unique([termId, memberId, deletedAt])
+  @@index([clubId, termId])
+  @@map("assessment")
+}
+
+/// 志愿时长单独立表而不并入积分：计量单位、认定流程、输出物
+/// （可打印的证明编号 certificateNo）都和积分不同。
+model VolunteerHour {
+  id         BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId     BigInt  @map("club_id") @db.UnsignedBigInt
+  memberId   BigInt  @map("member_id") @db.UnsignedBigInt
+  activityId BigInt? @map("activity_id") @db.UnsignedBigInt
+
+  hours             Decimal   @db.Decimal(6, 1)
+  /// 1 待认定 / 2 已认定 / 3 已驳回
+  certifyStatus     Int       @default(1) @map("certify_status")
+  certifierMemberId BigInt?   @map("certifier_member_id") @db.UnsignedBigInt
+  certifiedAt       DateTime? @map("certified_at") @db.DateTime(3)
+  certificateNo     String?   @map("certificate_no") @db.VarChar(32)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  member   Member    @relation(fields: [memberId], references: [id])
+  activity Activity? @relation(fields: [activityId], references: [id])
+
+  @@index([clubId, memberId])
+  @@map("volunteer_hour")
+}
+
+// =============================================================================
+// 十六、招新与面试（P2）
+// =============================================================================
+
+model RecruitCampaign {
+  id     BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId BigInt  @map("club_id") @db.UnsignedBigInt
+  termId BigInt? @map("term_id") @db.UnsignedBigInt
+
+  title          String   @db.VarChar(128)
+  description    String?  @db.Text
+  coverUrl       String?  @map("cover_url") @db.VarChar(255)
+  startTime      DateTime @map("start_time") @db.DateTime(3)
+  endTime        DateTime @map("end_time") @db.DateTime(3)
+  planHeadcount  Int      @default(0) @map("plan_headcount")
+  targetDeptIds  Json?    @map("target_dept_ids")
+  /// 动态表单定义（字段名 / 类型 / 是否必填 / 选项），前端按 schema 渲染，
+  /// 换一届招新改表单不用改代码
+  formSchemaJson Json?    @map("form_schema_json")
+  /// 1 草稿 / 2 进行中 / 3 已结束
+  status         Int      @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  term         Term?                @relation(fields: [termId], references: [id])
+  applications RecruitApplication[]
+  slots        InterviewSlot[]
+
+  @@index([clubId, status])
+  @@map("recruit_campaign")
+}
+
+model RecruitApplication {
+  id         BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  campaignId BigInt @map("campaign_id") @db.UnsignedBigInt
+  clubId     BigInt @map("club_id") @db.UnsignedBigInt
+
+  applicantName String  @map("applicant_name") @db.VarChar(32)
+  studentNo     String  @map("student_no") @db.VarChar(32)
+  gender        Int     @default(0)
+  college       String? @db.VarChar(64)
+  major         String? @db.VarChar(64)
+  grade         String? @db.VarChar(8)
+  className     String? @map("class_name") @db.VarChar(32)
+  phone         String? @db.VarChar(20)
+  email         String? @db.VarChar(64)
+
+  deptPref1    String? @map("dept_pref_1") @db.VarChar(32)
+  deptPref2    String? @map("dept_pref_2") @db.VarChar(32)
+  selfIntro    String? @map("self_intro") @db.Text
+  formDataJson Json?   @map("form_data_json")
+  resumeFileId BigInt? @map("resume_file_id") @db.UnsignedBigInt
+
+  /// 1 待审核 / 2 初筛通过 / 3 面试中 / 4 已录取 / 5 未录取 / 6 已放弃
+  status            Int      @default(1)
+  rejectReason      String?  @map("reject_reason") @db.VarChar(255)
+  /// 录取后自动创建 member，打通「申请人到正式成员」的转化链路
+  convertedMemberId BigInt?  @map("converted_member_id") @db.UnsignedBigInt
+  submitAt          DateTime @default(now()) @map("submit_at") @db.DateTime(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  campaign        RecruitCampaign       @relation(fields: [campaignId], references: [id])
+  convertedMember Member?               @relation(fields: [convertedMemberId], references: [id])
+  appointment     InterviewAppointment?
+  scores          InterviewScore[]
+
+  @@index([campaignId, status])
+  @@index([studentNo])
+  @@map("recruit_application")
+}
+
+model InterviewSlot {
+  id         BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  campaignId BigInt  @map("campaign_id") @db.UnsignedBigInt
+  deptId     BigInt? @map("dept_id") @db.UnsignedBigInt
+
+  interviewDate       DateTime @map("interview_date") @db.Date
+  startTime           String   @map("start_time") @db.VarChar(8)
+  endTime             String   @map("end_time") @db.VarChar(8)
+  location            String?  @db.VarChar(64)
+  interviewerMemberId BigInt?  @map("interviewer_member_id") @db.UnsignedBigInt
+  capacity            Int      @default(1)
+  /// 冗余缓存，以已预约数量为准
+  bookedCount         Int      @default(0) @map("booked_count")
+  status              Int      @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  campaign     RecruitCampaign        @relation(fields: [campaignId], references: [id])
+  dept         Department?            @relation(fields: [deptId], references: [id])
+  interviewer  Member?                @relation(fields: [interviewerMemberId], references: [id])
+  appointments InterviewAppointment[]
+
+  @@index([campaignId, interviewDate])
+  @@map("interview_slot")
+}
+
+model InterviewAppointment {
+  id            BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  applicationId BigInt  @map("application_id") @db.UnsignedBigInt
+  slotId        BigInt  @map("slot_id") @db.UnsignedBigInt
+  /// 1 已预约 / 2 已改期 / 3 已取消 / 4 已到场 / 5 爽约
+  status        Int     @default(1)
+  remark        String? @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  application RecruitApplication @relation(fields: [applicationId], references: [id])
+  slot        InterviewSlot      @relation(fields: [slotId], references: [id])
+
+  @@unique([applicationId])
+  @@index([slotId])
+  @@map("interview_appointment")
+}
+
+model InterviewScore {
+  id                  BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  applicationId       BigInt @map("application_id") @db.UnsignedBigInt
+  interviewerMemberId BigInt @map("interviewer_member_id") @db.UnsignedBigInt
+
+  expressionScore Decimal? @map("expression_score") @db.Decimal(5, 2)
+  skillScore      Decimal? @map("skill_score") @db.Decimal(5, 2)
+  attitudeScore   Decimal? @map("attitude_score") @db.Decimal(5, 2)
+  totalScore      Decimal? @map("total_score") @db.Decimal(5, 2)
+  comment         String?  @db.VarChar(500)
+  /// 1 推荐 / 2 待定 / 3 不推荐
+  suggestion      Int      @default(2)
+  scoredAt        DateTime @default(now()) @map("scored_at") @db.DateTime(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  application RecruitApplication @relation(fields: [applicationId], references: [id])
+  interviewer Member             @relation(fields: [interviewerMemberId], references: [id])
+
+  @@unique([applicationId, interviewerMemberId])
+  @@map("interview_score")
+}
+
+// =============================================================================
+// 十七、投票、相册、荣誉、活动分工（P2）
+// =============================================================================
+
+model Vote {
+  id     BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId BigInt @map("club_id") @db.UnsignedBigInt
+
+  title       String   @db.VarChar(128)
+  description String?  @db.Text
+  /// 1 单选 / 2 多选 / 3 评分
+  type        Int      @default(1)
+  isAnonymous Boolean  @default(false) @map("is_anonymous")
+  maxChoices  Int      @default(1) @map("max_choices")
+  startTime   DateTime @map("start_time") @db.DateTime(3)
+  endTime     DateTime @map("end_time") @db.DateTime(3)
+  targetScope Json?    @map("target_scope")
+  status      Int      @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  options VoteOption[]
+  records VoteRecord[]
+
+  @@index([clubId, status])
+  @@map("vote")
+}
+
+model VoteOption {
+  id        BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  voteId    BigInt  @map("vote_id") @db.UnsignedBigInt
+  content   String  @db.VarChar(255)
+  imageUrl  String? @map("image_url") @db.VarChar(255)
+  sort      Int     @default(0)
+  /// 冗余缓存，以 vote_record 为准
+  voteCount Int     @default(0) @map("vote_count")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  vote    Vote         @relation(fields: [voteId], references: [id])
+  records VoteRecord[]
+
+  @@index([voteId])
+  @@map("vote_option")
+}
+
+model VoteRecord {
+  id       BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  voteId   BigInt   @map("vote_id") @db.UnsignedBigInt
+  optionId BigInt   @map("option_id") @db.UnsignedBigInt
+  memberId BigInt   @map("member_id") @db.UnsignedBigInt
+  votedAt  DateTime @default(now()) @map("voted_at") @db.DateTime(3)
+  ip       String?  @db.VarChar(45)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  vote   Vote       @relation(fields: [voteId], references: [id])
+  option VoteOption @relation(fields: [optionId], references: [id])
+  member Member     @relation(fields: [memberId], references: [id])
+
+  /// 并发重复投票的最终防线
+  @@unique([voteId, optionId, memberId])
+  @@map("vote_record")
+}
+
+model ActivityPhoto {
+  id         BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  activityId BigInt  @map("activity_id") @db.UnsignedBigInt
+  fileId     BigInt  @map("file_id") @db.UnsignedBigInt
+  caption    String? @db.VarChar(255)
+  sort       Int     @default(0)
+  status     Int     @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  activity Activity @relation(fields: [activityId], references: [id])
+
+  @@index([activityId])
+  @@map("activity_photo")
+}
+
+model Honor {
+  id                BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  clubId            BigInt    @map("club_id") @db.UnsignedBigInt
+  title             String    @db.VarChar(128)
+  /// 国家级 / 省级 / 校级 / 社团内部
+  level             String?   @db.VarChar(16)
+  awardedAt         DateTime? @map("awarded_at") @db.Date
+  description       String?   @db.Text
+  certificateFileId BigInt?   @map("certificate_file_id") @db.UnsignedBigInt
+  sort              Int       @default(0)
+  status            Int       @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  @@index([clubId, status])
+  @@map("honor")
+}
+
+/// 把一场活动拆成「场地申请」「物料采购」「宣传推文」等任务并指派到人，
+/// 让活动管理从「记个时间地点」变成真正的协作。
+model ActivityTask {
+  id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  activityId       BigInt    @map("activity_id") @db.UnsignedBigInt
+  title            String    @db.VarChar(128)
+  assigneeMemberId BigInt?   @map("assignee_member_id") @db.UnsignedBigInt
+  dueTime          DateTime? @map("due_time") @db.DateTime(3)
+  /// 1 待开始 / 2 进行中 / 3 已完成
+  status           Int       @default(1)
+  remark           String?   @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt BigInt   @default(0) @map("deleted_at") @db.UnsignedBigInt
+
+  activity Activity @relation(fields: [activityId], references: [id])
+  assignee Member?  @relation(fields: [assigneeMemberId], references: [id])
+
+  @@index([activityId, status])
+  @@map("activity_task")
+}
