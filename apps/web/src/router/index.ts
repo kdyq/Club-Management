@@ -47,6 +47,25 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '工作台', icon: 'HomeFilled', perm: 'menu:dashboard', group: '总览', order: 1 },
       },
       {
+        path: 'activities',
+        name: 'activities',
+        component: () => import('@/views/activity/index.vue'),
+        meta: { title: '活动管理', icon: 'Calendar', perm: 'menu:activity-list', group: '活动', order: 20 },
+      },
+      {
+        path: 'activities/:id',
+        name: 'activity-detail',
+        component: () => import('@/views/activity/detail.vue'),
+        // 详情不单独进菜单，权限继承列表；这里不设 perm，避免直接打开链接被判 403
+        meta: { title: '活动详情', group: '活动', order: 21 },
+      },
+      {
+        path: 'approvals',
+        name: 'approvals',
+        component: () => import('@/views/approval/index.vue'),
+        meta: { title: '审批中心', icon: 'Checked', group: '活动', order: 22 },
+      },
+      {
         path: 'members',
         name: 'members',
         component: () => import('@/views/member/index.vue'),

@@ -34,6 +34,8 @@ const navGroups = computed(() => {
     if (record.name === undefined) continue;
     if (meta.public === true) continue;
     if (meta.title === undefined) continue;
+    // 带路径参数的路由（详情页之类）不是菜单项，它们只能从列表点进去
+    if (record.path.includes(':')) continue;
     // 有 perm 的按权限过滤；没有 perm 的表示「登录即可见」，比如我的档案
     if (meta.perm !== undefined && !user.hasPerm(meta.perm)) continue;
 
