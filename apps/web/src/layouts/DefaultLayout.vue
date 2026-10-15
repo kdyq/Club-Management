@@ -33,8 +33,9 @@ const navGroups = computed(() => {
     const meta = record.meta;
     if (record.name === undefined) continue;
     if (meta.public === true) continue;
-    if (meta.title === undefined || meta.perm === undefined) continue;
-    if (!user.hasPerm(meta.perm)) continue;
+    if (meta.title === undefined) continue;
+    // 有 perm 的按权限过滤；没有 perm 的表示「登录即可见」，比如我的档案
+    if (meta.perm !== undefined && !user.hasPerm(meta.perm)) continue;
 
     const item: NavItem = {
       name: String(record.name),

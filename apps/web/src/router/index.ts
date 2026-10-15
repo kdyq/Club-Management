@@ -53,6 +53,25 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '成员管理', icon: 'User', perm: 'menu:member', group: '组织', order: 10 },
       },
       {
+        path: 'departments',
+        name: 'departments',
+        component: () => import('@/views/department/index.vue'),
+        meta: { title: '部门管理', icon: 'Grid', perm: 'menu:department', group: '组织', order: 11 },
+      },
+      {
+        path: 'terms',
+        name: 'terms',
+        component: () => import('@/views/term/index.vue'),
+        meta: { title: '届次管理', icon: 'Calendar', perm: 'menu:term', group: '组织', order: 12 },
+      },
+      {
+        path: 'profile',
+        name: 'profile',
+        component: () => import('@/views/profile/index.vue'),
+        // 不看权限码：每个人都能看自己的档案
+        meta: { title: '我的档案', icon: 'Postcard', group: '个人', order: 80 },
+      },
+      {
         path: 'system/roles',
         name: 'roles',
         component: () => import('@/views/system/role/index.vue'),
