@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller.js';
+import { PrismaModule } from './common/prisma/prisma.module.js';
 
 @Module({
   imports: [
@@ -10,6 +11,7 @@ import { AppController } from './app.controller.js';
       // 开发时从 apps/server 启动，构建后从仓库根启动，两种 cwd 都要能找到根目录的 .env
       envFilePath: [join(process.cwd(), '.env'), join(process.cwd(), '..', '..', '.env')],
     }),
+    PrismaModule,
   ],
   controllers: [AppController],
 })
