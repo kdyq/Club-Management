@@ -9,9 +9,12 @@ import { PermissionGuard } from './common/guards/permission.guard.js';
 import { PrismaModule } from './common/prisma/prisma.module.js';
 import { RedisModule } from './common/redis/redis.module.js';
 import { ActivityModule } from './modules/activity/activity.module.js';
+import { AnnouncementModule } from './modules/announcement/announcement.module.js';
 import { ApprovalModule } from './modules/approval/approval.module.js';
+import { AssetModule } from './modules/asset/asset.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { DepartmentModule } from './modules/department/department.module.js';
+import { DutyModule } from './modules/duty/duty.module.js';
 import { FileModule } from './modules/file/file.module.js';
 import { FundModule } from './modules/fund/fund.module.js';
 import { MemberModule } from './modules/member/member.module.js';
@@ -20,6 +23,7 @@ import { PermissionModule } from './modules/permission/permission.module.js';
 import { RoleModule } from './modules/role/role.module.js';
 import { StatsModule } from './modules/stats/stats.module.js';
 import { TermModule } from './modules/term/term.module.js';
+import { VenueModule } from './modules/venue/venue.module.js';
 
 @Module({
   imports: [
@@ -42,7 +46,11 @@ import { TermModule } from './modules/term/term.module.js';
     StatsModule,
     FileModule,
     NotificationModule,
+    AnnouncementModule,
     FundModule,
+    DutyModule,
+    AssetModule,
+    VenueModule,
   ],
   controllers: [AppController],
   providers: [

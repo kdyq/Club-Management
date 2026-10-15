@@ -21,3 +21,22 @@ export interface OverviewVo {
   maxDataScopeLabel: string;
   scopeDescription: string;
 }
+
+/** 数据看板。所有数字都是实时查询得出，没有写死的展示值 */
+export interface DashboardVo {
+  memberCount: number;
+  clubMemberCount: number;
+  deptCount: number;
+  activityCount: number;
+  ongoingCount: number;
+  /** 我的待办审批数 */
+  pendingApprovalCount: number;
+  /** 我的未读站内信数 */
+  unreadCount: number;
+  /** 近半年发放的积分合计 */
+  monthPoints: number;
+  deptDistribution: { name: string; count: number }[];
+  activityStatusDistribution: { status: number; label: string; count: number }[];
+  memberGrowth: { month: string; count: number }[];
+  topMembers: { id: string; name: string; deptName: string | null; points: number }[];
+}

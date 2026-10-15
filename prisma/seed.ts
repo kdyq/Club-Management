@@ -50,25 +50,54 @@ async function reset(): Promise<void> {
   await prisma.department.updateMany({ data: { parentId: null } });
   await prisma.permission.updateMany({ data: { parentId: null } });
   await prisma.fundCategory.updateMany({ data: { parentId: null } });
+  await prisma.fileFolder.updateMany({ data: { parentId: null } });
 
-  await prisma.fundTransaction.deleteMany();
-  await prisma.fundBudget.deleteMany();
-  await prisma.memberRole.deleteMany();
-  await prisma.rolePermission.deleteMany();
-  // 活动链路的表要先清，否则活动分类、积分规则、积分流水都会被外键挡住
+  // 删除顺序必须按外键依赖从叶子往根走，否则会被 FK 挡住。
+  // 分四段：明细表 → 主表 → 成员 → 组织与基础数据。
+
+  // 1) 只指向别的表、不被别人引用的明细表
   await prisma.activityCheckin.deleteMany();
   await prisma.activityLeave.deleteMany();
   await prisma.activityRegistration.deleteMany();
+  await prisma.activityPhoto.deleteMany();
+  await prisma.activityTask.deleteMany();
+  await prisma.fundVoucher.deleteMany();
+  await prisma.memberFee.deleteMany();
+  await prisma.pointRecord.deleteMany();
+  await prisma.volunteerHour.deleteMany();
+  await prisma.assetBorrow.deleteMany();
+  await prisma.venueBooking.deleteMany();
+  await prisma.dutyLog.deleteMany();
+  await prisma.dutySwap.deleteMany();
+  await prisma.dutySchedule.deleteMany();
+  await prisma.approvalTask.deleteMany();
+
+  // 2) 主表
   await prisma.activity.deleteMany();
   await prisma.activityCategory.deleteMany();
-  await prisma.approvalTask.deleteMany();
+  await prisma.fundTransaction.deleteMany();
+  await prisma.fundBudget.deleteMany();
+  await prisma.memberFeeStandard.deleteMany();
+  await prisma.pointRule.deleteMany();
+  await prisma.dutyPlan.deleteMany();
+  await prisma.asset.deleteMany();
+  await prisma.venue.deleteMany();
+  await prisma.announcement.deleteMany();
   await prisma.approvalInstance.deleteMany();
   await prisma.approvalNode.deleteMany();
   await prisma.approvalFlow.deleteMany();
-  await prisma.pointRecord.deleteMany();
-  await prisma.pointRule.deleteMany();
-  await prisma.volunteerHour.deleteMany();
+
+  // 3) 通知与文件：都挂在 user 上，要先于 user 清掉
+  await prisma.notificationReceiver.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.fileGrant.deleteMany();
+  await prisma.fileItem.deleteMany();
+  await prisma.fileFolder.deleteMany();
+
+  // 4) 成员及其关联，然后才是组织与基础数据
+  await prisma.memberRole.deleteMany();
   await prisma.member.deleteMany();
+  await prisma.rolePermission.deleteMany();
   await prisma.department.deleteMany();
   await prisma.permission.deleteMany();
   await prisma.role.deleteMany();
@@ -258,9 +287,23 @@ function managerPerms(writable: readonly string[]): string[] {
   });
 }
 
-/** 普通成员：只看自己的，菜单只留工作台、活动与成员名录 */
+/**
+ * 普通成员：只看自己的数据，但**能自助办事**。
+ *
+ * 借器材、约场地、看值班、读公告这些是成员本来就该自己能做的动作，
+ * 把它们放在管理员权限里是设计错误——系统的意义就在于让成员自助。
+ * 需要管控的是「审批」与「改删别人的」，那部分仍然只给管理角色。
+ */
 function memberPerms(): string[] {
-  const allowedMenus = ['menu:dashboard', 'menu:activity-list', 'menu:member'];
+  const allowedMenus = [
+    'menu:dashboard',
+    'menu:activity-list',
+    'menu:member',
+    'menu:asset',
+    'menu:venue',
+    'menu:duty',
+    'menu:announcement',
+  ];
   const allowedActions = [
     'member:read',
     'activity:read',
@@ -268,6 +311,13 @@ function memberPerms(): string[] {
     'file:read',
     'point:read',
     'leave:approve',
+    // 自助类动作
+    'asset:read',
+    'asset:create',
+    'venue:read',
+    'venue:create',
+    'duty:read',
+    'announcement:read',
   ];
   return ALL_PERMISSION_CODES.filter(
     (code) => allowedMenus.includes(code) || allowedActions.includes(code),
@@ -427,7 +477,39 @@ const APPROVAL_FLOWS = [
   },
 ] as const;
 
-/** 积分规则：活动与签到的分值来源 */
+/** 场地。天台观测点是社团最常用的场地 */
+const VENUES = [
+  { name: '理学院天台观测点', location: '理学院 A 座顶层', capacity: 30, openTime: '18:00', closeTime: '23:00' },
+  { name: '社团活动室', location: '学生活动中心 305', capacity: 40, openTime: '08:00', closeTime: '22:00' },
+] as const;
+
+/** 物资。可借数量初始等于总数，之后由借还记录驱动 */
+const ASSETS = [
+  { code: 'XYAS-EQ-001', name: '星特朗 130EQ 天文望远镜', category: '观测器材', spec: '130mm 反射式', unit: '台', totalQty: 2, location: '活动室器材柜' },
+  { code: 'XYAS-EQ-002', name: '双筒望远镜', category: '观测器材', spec: '10×50', unit: '副', totalQty: 6, location: '活动室器材柜' },
+  { code: 'XYAS-EQ-003', name: '指星笔', category: '观测器材', spec: '绿光', unit: '支', totalQty: 4, location: '活动室器材柜' },
+  { code: 'XYAS-EQ-004', name: '便携投影仪', category: '宣传器材', spec: '1080P', unit: '台', totalQty: 1, location: '活动室储物柜' },
+  { code: 'XYAS-EQ-005', name: '星图折页（印刷品）', category: '宣传物料', spec: 'A3 双面', unit: '份', totalQty: 200, location: '活动室纸箱' },
+] as const;
+
+const ANNOUNCEMENTS = [
+  {
+    title: '2026-2027 学年会费开始收缴',
+    content:
+      '各位社员：本学年会费每人 50 元，请在本月底前完成缴纳。可通过社长或秘书处缴纳现金，也可微信转账后上传凭证。' +
+      '确有困难的同学请联系社长申请减免。',
+    type: 2,
+    isTop: true,
+  },
+  {
+    title: '英仙座流星雨观测活动开始报名',
+    content:
+      '一年一度的英仙座流星雨来了。活动定于本月于理学院天台观测点举行，名额 20 人，需报名审核。' +
+      '请自备保暖衣物，社团提供望远镜与星图。',
+    type: 1,
+    isTop: false,
+  },
+] as const;
 const POINT_RULES = [
   { code: 'activity_join', name: '参与活动', eventType: 2, points: 5 },
   { code: 'activity_checkin', name: '活动签到', eventType: 1, points: 2 },
@@ -673,6 +755,54 @@ async function main(): Promise<void> {
       });
     }
     console.log(`  ${flow.name}：${flow.nodes.length} 个节点`);
+  }
+
+  console.log('写入场地与物资…');
+  for (const venue of VENUES) {
+    await prisma.venue.create({
+      data: {
+        clubId: club.id,
+        name: venue.name,
+        location: venue.location,
+        capacity: venue.capacity,
+        openTime: venue.openTime,
+        closeTime: venue.closeTime,
+        status: EnableStatus.ENABLED,
+      },
+    });
+  }
+  for (const asset of ASSETS) {
+    await prisma.asset.create({
+      data: {
+        clubId: club.id,
+        code: asset.code,
+        name: asset.name,
+        category: asset.category,
+        spec: asset.spec,
+        unit: asset.unit,
+        totalQty: asset.totalQty,
+        availableQty: asset.totalQty,
+        location: asset.location,
+        status: EnableStatus.ENABLED,
+      },
+    });
+  }
+
+  console.log('写入公告…');
+  for (const item of ANNOUNCEMENTS) {
+    await prisma.announcement.create({
+      data: {
+        clubId: club.id,
+        title: item.title,
+        content: item.content,
+        type: item.type,
+        isTop: item.isTop,
+        publishStatus: 2,
+        publishAt: new Date(),
+        publisherMemberId: memberIdByNo.get('XYAS-2026-001') ?? null,
+        viewCount: 0,
+      },
+    });
   }
 
   console.log('写入积分规则…');

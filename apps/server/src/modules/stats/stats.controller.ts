@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { OverviewVo, PublicOverviewVo } from '@club/shared';
+import type { DashboardVo, OverviewVo, PublicOverviewVo } from '@club/shared';
 import { CurrentMember } from '../../common/decorators/current-member.decorator.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import type { MemberContext } from '../../common/types/member-context.js';
@@ -10,6 +10,15 @@ import { StatsService } from './stats.service.js';
 @Controller('stats')
 export class StatsController {
   constructor(private readonly statsService: StatsService) {}
+
+  @Get('dashboard')
+  @ApiOperation({
+    summary: '数据看板',
+    description: '成员增长、活动状态分布、部门构成、积分排行，全部实时查询得出。',
+  })
+  async dashboard(@CurrentMember() me: MemberContext): Promise<DashboardVo> {
+    return this.statsService.dashboard(me);
+  }
 
   @Public()
   @Get('public')
