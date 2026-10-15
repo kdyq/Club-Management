@@ -9,10 +9,12 @@ import { PermissionGuard } from './common/guards/permission.guard.js';
 import { PrismaModule } from './common/prisma/prisma.module.js';
 import { RedisModule } from './common/redis/redis.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { DepartmentModule } from './modules/department/department.module.js';
 import { MemberModule } from './modules/member/member.module.js';
 import { PermissionModule } from './modules/permission/permission.module.js';
 import { RoleModule } from './modules/role/role.module.js';
 import { StatsModule } from './modules/stats/stats.module.js';
+import { TermModule } from './modules/term/term.module.js';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { StatsModule } from './modules/stats/stats.module.js';
     RedisModule,
     SysConfigModule,
     AuthModule,
+    DepartmentModule,
+    TermModule,
     MemberModule,
     RoleModule,
     PermissionModule,

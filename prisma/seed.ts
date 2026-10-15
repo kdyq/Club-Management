@@ -292,6 +292,7 @@ const FUND_CATEGORIES = [
 
 const SYS_CONFIGS = [
   { configKey: 'auth.captcha.enabled', configValue: 'true', name: '登录是否要求图形验证码' },
+  { configKey: 'member.initPassword', configValue: 'Xy@123456', name: '新增成员时的初始密码' },
   { configKey: 'upload.maxSize', configValue: '20971520', name: '单文件大小上限（字节）' },
   { configKey: 'checkin.qrcode.ttlSeconds', configValue: '30', name: '签到二维码刷新间隔（秒）' },
   { configKey: 'checkin.lateGraceMinutes', configValue: '10', name: '签到迟到宽限（分钟）' },

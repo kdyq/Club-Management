@@ -1,16 +1,12 @@
 /**
- * 成员服务。
+ * 成员列表查询。
  *
- * 这是第一个真正落地的业务查询，用来验证两层权限都在起作用：
- * - 功能权限由 @RequirePerm + PermissionGuard 拦（能不能看）
- * - 数据范围由 buildScopeWhere 生成 where（能看谁的数据）
+ * 这个模块是两层权限的样板：功能权限由 @RequirePerm + PermissionGuard 拦，
+ * 数据范围由 buildScopeWhere 生成 where。导出接口同样要过数据范围——
+ * Excel 导出是最容易被忽略的越权入口（开发文档 7.5 节）。
  */
 import { Injectable } from '@nestjs/common';
 import {
-  MemberPosition,
-  MemberStatus,
-  MEMBER_POSITION_LABEL,
-  MEMBER_STATUS_LABEL,
   normalizePage,
   skipOf,
   type MemberVo,
@@ -20,6 +16,7 @@ import { buildScopeWhere } from '../../common/prisma/data-scope.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import type { MemberContext } from '../../common/types/member-context.js';
 import type { QueryMemberDto } from './dto/query-member.dto.js';
+import { toMemberVo, type MemberRow } from './member.mapper.js';
 
 const SORTABLE_FIELDS = new Set(['joinDate', 'memberNo', 'totalPoints']);
 
@@ -27,11 +24,11 @@ const SORTABLE_FIELDS = new Set(['joinDate', 'memberNo', 'totalPoints']);
 export class MemberService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async page(me: MemberContext, query: QueryMemberDto): Promise<PageResult<MemberVo>> {
-    const { page, pageSize } = normalizePage(query);
+  /** 把查询条件 + 数据范围拼成 where，列表与导出共用，保证两者口径一致 */
+  async buildWhere(me: MemberContext, query: QueryMemberDto): Promise<Record<string, unknown>> {
     const scopeWhere = await buildScopeWhere(this.prisma, me, 'member');
-
     const filters: Record<string, unknown> = {};
+
     if (query.keyword !== undefined && query.keyword !== '') {
       const keyword = query.keyword.trim();
       filters.OR = [
@@ -46,7 +43,13 @@ export class MemberService {
     if (query.status !== undefined) filters.status = query.status;
     if (query.position !== undefined) filters.position = query.position;
 
-    const where = { ...scopeWhere, ...filters };
+    return { ...scopeWhere, ...filters };
+  }
+
+  async page(me: MemberContext, query: QueryMemberDto): Promise<PageResult<MemberVo>> {
+    const { page, pageSize } = normalizePage(query);
+    const where = await this.buildWhere(me, query);
+
     const sortBy = SORTABLE_FIELDS.has(query.sortBy ?? '') ? (query.sortBy as string) : 'memberNo';
     const sortOrder = query.sortOrder === 'desc' ? 'desc' : 'asc';
 
@@ -65,62 +68,26 @@ export class MemberService {
       }),
     ]);
 
-    return { list: rows.map((row) => toMemberVo(row)), total, page, pageSize };
+    return { list: rows.map((row) => toMemberVo(row as unknown as MemberRow)), total, page, pageSize };
   }
-}
 
-interface MemberRow {
-  id: bigint;
-  memberNo: string | null;
-  position: number;
-  status: number;
-  isCore: boolean;
-  totalPoints: number;
-  joinDate: Date | null;
-  deptId: bigint | null;
-  dept: { id: bigint; name: string } | null;
-  user: {
-    realName: string;
-    studentNo: string | null;
-    gender: number;
-    grade: string | null;
-    major: string | null;
-    className: string | null;
-    phone: string | null;
-    email: string | null;
-    avatarUrl: string | null;
-  };
-  roles: { role: { id: bigint; code: string; name: string } }[];
-}
-
-/** 对外不返回 passwordHash 等敏感字段（提交前自检清单第 3 条） */
-export function toMemberVo(row: MemberRow): MemberVo {
-  return {
-    id: row.id.toString(),
-    memberNo: row.memberNo,
-    realName: row.user.realName,
-    studentNo: row.user.studentNo,
-    gender: row.user.gender,
-    grade: row.user.grade,
-    major: row.user.major,
-    className: row.user.className,
-    phone: row.user.phone,
-    email: row.user.email,
-    avatarUrl: row.user.avatarUrl,
-    deptId: row.deptId?.toString() ?? null,
-    deptName: row.dept?.name ?? null,
-    position: row.position,
-    positionLabel:
-      MEMBER_POSITION_LABEL[row.position as MemberPosition] ?? String(row.position),
-    status: row.status,
-    statusLabel: MEMBER_STATUS_LABEL[row.status as MemberStatus] ?? String(row.status),
-    isCore: row.isCore,
-    totalPoints: row.totalPoints,
-    joinDate: row.joinDate?.toISOString().slice(0, 10) ?? null,
-    roles: row.roles.map(({ role }) => ({
-      id: role.id.toString(),
-      code: role.code,
-      name: role.name,
-    })),
-  };
+  /** 导出用：不分页，但仍然带数据范围与筛选条件 */
+  async listForExport(
+    me: MemberContext,
+    query: QueryMemberDto,
+    limit = 5000,
+  ): Promise<MemberVo[]> {
+    const where = await this.buildWhere(me, query);
+    const rows = await this.prisma.client.member.findMany({
+      where,
+      orderBy: [{ position: 'asc' }, { memberNo: 'asc' }],
+      take: limit,
+      include: {
+        user: true,
+        dept: { select: { id: true, name: true } },
+        roles: { include: { role: { select: { id: true, code: true, name: true } } } },
+      },
+    });
+    return rows.map((row) => toMemberVo(row as unknown as MemberRow));
+  }
 }
