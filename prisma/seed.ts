@@ -382,6 +382,49 @@ const APPROVAL_FLOWS = [
       },
     ],
   },
+  {
+    code: 'fund_expense',
+    name: '经费收支审批',
+    bizType: 'fund',
+    description: '经费收支：秘书处复核 → 社长审批',
+    nodes: [
+      {
+        seq: 1,
+        name: '秘书处复核',
+        approverType: 3,
+        approverValue: null,
+        approveMode: 1,
+        timeoutHours: 24,
+        timeoutAction: 1,
+      },
+      {
+        seq: 2,
+        name: '社长审批',
+        approverType: 4,
+        approverValue: null,
+        approveMode: 1,
+        timeoutHours: 48,
+        timeoutAction: 1,
+      },
+    ],
+  },
+  {
+    code: 'budget_apply',
+    name: '预算申请审批',
+    bizType: 'budget',
+    description: '预算申请：社长单级审批',
+    nodes: [
+      {
+        seq: 1,
+        name: '社长审批',
+        approverType: 4,
+        approverValue: null,
+        approveMode: 1,
+        timeoutHours: 48,
+        timeoutAction: 1,
+      },
+    ],
+  },
 ] as const;
 
 /** 积分规则：活动与签到的分值来源 */

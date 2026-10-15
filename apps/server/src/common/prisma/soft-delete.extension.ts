@@ -12,7 +12,14 @@
  */
 import { Prisma, type PrismaClient } from '@prisma/client';
 
-/** 有 deletedAt 字段的表。新增模型时如果带软删除，记得加进来。 */
+/**
+ * 有 deletedAt 字段的表。
+ *
+ * **加模型前必须确认该表真的有 deleted_at 列**：扩展会往读操作的 where 里注入
+ * `deletedAt: 0n`，表里没有这一列就会抛 `Unknown argument deletedAt` 的运行时错误。
+ * 关联/明细表（如 fund_voucher、vote_record、interview_score）在设计上就是硬删除，
+ * 不带软删除字段，不要往这里加。
+ */
 export const SOFT_DELETE_MODELS: ReadonlySet<string> = new Set<string>([
   'Club', 'Term', 'Department', 'User', 'Member', 'Role', 'Permission',
   'SysDict', 'SysDictItem', 'SysConfig',
@@ -20,13 +27,13 @@ export const SOFT_DELETE_MODELS: ReadonlySet<string> = new Set<string>([
   'ActivityCategory', 'Activity', 'ActivityRegistration', 'ActivityCheckin', 'ActivityLeave',
   'FundAccount', 'FundCategory', 'FundTransaction',
   'Announcement', 'Notification', 'NotificationTemplate', 'MessageChannelConfig',
-  'FileFolder', 'FileItem', 'FileGrant',
+  'FileFolder', 'FileItem',
   'Asset', 'AssetBorrow', 'Venue', 'VenueBooking',
   'DutyPlan', 'DutySchedule', 'DutyLog', 'DutySwap', 'MemberAvailability',
-  'FundBudget', 'FundVoucher', 'MemberFeeStandard', 'MemberFee',
+  'FundBudget', 'MemberFeeStandard', 'MemberFee',
   'PointRule', 'PointRecord', 'Assessment', 'VolunteerHour',
-  'RecruitCampaign', 'RecruitApplication', 'InterviewSlot', 'InterviewAppointment', 'InterviewScore',
-  'Vote', 'VoteOption', 'VoteRecord', 'ActivityPhoto', 'Honor', 'ActivityTask',
+  'RecruitCampaign', 'RecruitApplication', 'InterviewSlot',
+  'Vote', 'ActivityPhoto', 'Honor', 'ActivityTask',
 ]);
 
 /** 需要往 where 里注入 deletedAt 条件的读操作 */

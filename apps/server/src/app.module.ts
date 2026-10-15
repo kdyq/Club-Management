@@ -12,7 +12,10 @@ import { ActivityModule } from './modules/activity/activity.module.js';
 import { ApprovalModule } from './modules/approval/approval.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { DepartmentModule } from './modules/department/department.module.js';
+import { FileModule } from './modules/file/file.module.js';
+import { FundModule } from './modules/fund/fund.module.js';
 import { MemberModule } from './modules/member/member.module.js';
+import { NotificationModule } from './modules/notification/notification.module.js';
 import { PermissionModule } from './modules/permission/permission.module.js';
 import { RoleModule } from './modules/role/role.module.js';
 import { StatsModule } from './modules/stats/stats.module.js';
@@ -37,6 +40,9 @@ import { TermModule } from './modules/term/term.module.js';
     RoleModule,
     PermissionModule,
     StatsModule,
+    FileModule,
+    NotificationModule,
+    FundModule,
   ],
   controllers: [AppController],
   providers: [

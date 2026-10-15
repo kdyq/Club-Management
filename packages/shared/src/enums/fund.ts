@@ -54,21 +54,24 @@ export const FEE_STATUS_LABEL: Record<FeeStatus, string> = {
   [FeeStatus.WAIVED]: '已减免',
 };
 
-/** 预算状态 */
+/** 预算状态。取值与 schema 的注释一致：1 草稿 / 2 审批中 / 3 已通过 / 4 已驳回 / 5 已关闭 */
 export const BudgetStatus = {
-  /** 待审批 */
-  PENDING: 1,
+  /** 草稿 */
+  DRAFT: 1,
+  /** 审批中 */
+  PENDING: 2,
   /** 已通过 */
-  APPROVED: 2,
+  APPROVED: 3,
   /** 已驳回 */
-  REJECTED: 3,
+  REJECTED: 4,
   /** 已关闭 */
-  CLOSED: 4,
+  CLOSED: 5,
 } as const;
 export type BudgetStatus = (typeof BudgetStatus)[keyof typeof BudgetStatus];
 
 export const BUDGET_STATUS_LABEL: Record<BudgetStatus, string> = {
-  [BudgetStatus.PENDING]: '待审批',
+  [BudgetStatus.DRAFT]: '草稿',
+  [BudgetStatus.PENDING]: '审批中',
   [BudgetStatus.APPROVED]: '已通过',
   [BudgetStatus.REJECTED]: '已驳回',
   [BudgetStatus.CLOSED]: '已关闭',
