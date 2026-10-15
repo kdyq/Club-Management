@@ -55,6 +55,19 @@ async function reset(): Promise<void> {
   await prisma.fundBudget.deleteMany();
   await prisma.memberRole.deleteMany();
   await prisma.rolePermission.deleteMany();
+  // 活动链路的表要先清，否则活动分类、积分规则、积分流水都会被外键挡住
+  await prisma.activityCheckin.deleteMany();
+  await prisma.activityLeave.deleteMany();
+  await prisma.activityRegistration.deleteMany();
+  await prisma.activity.deleteMany();
+  await prisma.activityCategory.deleteMany();
+  await prisma.approvalTask.deleteMany();
+  await prisma.approvalInstance.deleteMany();
+  await prisma.approvalNode.deleteMany();
+  await prisma.approvalFlow.deleteMany();
+  await prisma.pointRecord.deleteMany();
+  await prisma.pointRule.deleteMany();
+  await prisma.volunteerHour.deleteMany();
   await prisma.member.deleteMany();
   await prisma.department.deleteMany();
   await prisma.permission.deleteMany();
@@ -328,6 +341,58 @@ const DICTS = [
   },
 ] as const;
 
+/** 活动分类。与上面的 activity_type 字典对应，但活动表用的是独立分类表 */
+const ACTIVITY_CATEGORIES = [
+  { name: '科普讲座', color: '#3553c6', sort: 1 },
+  { name: '观测活动', color: '#186147', sort: 2 },
+  { name: '校内竞赛', color: '#7d510c', sort: 3 },
+  { name: '志愿服务', color: '#2f7d5c', sort: 4 },
+  { name: '团建交流', color: '#9c2f2f', sort: 5 },
+] as const;
+
+/**
+ * 审批流程。活动立项走两级：先部门负责人，再社长。
+ * approverType：1 指定角色 / 2 指定成员 / 3 部门负责人 / 4 上级（本项目取社长）
+ * approveMode：1 或签 / 2 会签
+ */
+const APPROVAL_FLOWS = [
+  {
+    code: 'activity_apply',
+    name: '活动立项审批',
+    bizType: 'activity',
+    description: '活动立项：部门负责人 → 社长',
+    nodes: [
+      {
+        seq: 1,
+        name: '部门负责人审批',
+        approverType: 3,
+        approverValue: null,
+        approveMode: 1,
+        timeoutHours: 24,
+        timeoutAction: 1,
+      },
+      {
+        seq: 2,
+        name: '社长审批',
+        approverType: 4,
+        approverValue: null,
+        approveMode: 1,
+        timeoutHours: 48,
+        timeoutAction: 1,
+      },
+    ],
+  },
+] as const;
+
+/** 积分规则：活动与签到的分值来源 */
+const POINT_RULES = [
+  { code: 'activity_join', name: '参与活动', eventType: 2, points: 5 },
+  { code: 'activity_checkin', name: '活动签到', eventType: 1, points: 2 },
+  { code: 'duty_finish', name: '完成值班', eventType: 3, points: 3 },
+  { code: 'contribution', name: '突出贡献', eventType: 4, points: 10 },
+  { code: 'violation', name: '违规扣分', eventType: 5, points: -5 },
+] as const;
+
 // ---------------------------------------------------------------------------
 // 六、写入
 // ---------------------------------------------------------------------------
@@ -518,6 +583,65 @@ async function main(): Promise<void> {
         name: category.name,
         type: category.type,
         sort: category.sort,
+        status: EnableStatus.ENABLED,
+      },
+    });
+  }
+
+  console.log('写入活动分类…');
+  for (const category of ACTIVITY_CATEGORIES) {
+    await prisma.activityCategory.create({
+      data: {
+        clubId: club.id,
+        name: category.name,
+        color: category.color,
+        sort: category.sort,
+        status: EnableStatus.ENABLED,
+      },
+    });
+  }
+
+  console.log('写入审批流程与节点…');
+  for (const flow of APPROVAL_FLOWS) {
+    const created = await prisma.approvalFlow.create({
+      data: {
+        clubId: club.id,
+        code: flow.code,
+        name: flow.name,
+        bizType: flow.bizType,
+        description: flow.description,
+        version: 1,
+        status: EnableStatus.ENABLED,
+      },
+    });
+    for (const node of flow.nodes) {
+      await prisma.approvalNode.create({
+        data: {
+          flowId: created.id,
+          seq: node.seq,
+          name: node.name,
+          approverType: node.approverType,
+          approverValue: node.approverValue,
+          approveMode: node.approveMode,
+          allowEmptySkip: false,
+          timeoutHours: node.timeoutHours,
+          timeoutAction: node.timeoutAction,
+        },
+      });
+    }
+    console.log(`  ${flow.name}：${flow.nodes.length} 个节点`);
+  }
+
+  console.log('写入积分规则…');
+  for (const rule of POINT_RULES) {
+    await prisma.pointRule.create({
+      data: {
+        clubId: club.id,
+        code: rule.code,
+        name: rule.name,
+        eventType: rule.eventType,
+        points: rule.points,
+        maxPerTerm: 0,
         status: EnableStatus.ENABLED,
       },
     });

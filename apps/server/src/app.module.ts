@@ -8,6 +8,8 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { PermissionGuard } from './common/guards/permission.guard.js';
 import { PrismaModule } from './common/prisma/prisma.module.js';
 import { RedisModule } from './common/redis/redis.module.js';
+import { ActivityModule } from './modules/activity/activity.module.js';
+import { ApprovalModule } from './modules/approval/approval.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { DepartmentModule } from './modules/department/department.module.js';
 import { MemberModule } from './modules/member/member.module.js';
@@ -27,6 +29,8 @@ import { TermModule } from './modules/term/term.module.js';
     RedisModule,
     SysConfigModule,
     AuthModule,
+    ApprovalModule,
+    ActivityModule,
     DepartmentModule,
     TermModule,
     MemberModule,

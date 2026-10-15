@@ -20,8 +20,13 @@ export type ScopeWhere = Record<string, unknown>;
 interface ScopeResourceSpec {
   /** 租户字段 */
   club: string;
-  /** 部门字段，null 表示该资源没有部门维度 */
+  /** 部门字段，null 表示该表本身没有部门列 */
   dept: string | null;
+  /**
+   * 本表没有 dept 列、但要按部门限定时，走这条关系：
+   * 例如活动是按「组织者所在部门」来限制，而不是活动自己有部门。
+   */
+  deptVia?: { relation: string; field: string };
   /** 「仅本人」判定用的字段 */
   owner: string;
 }
@@ -32,7 +37,13 @@ interface ScopeResourceSpec {
  */
 export const SCOPE_RESOURCES = {
   member: { club: 'clubId', dept: 'deptId', owner: 'id' },
-} as const;
+  activity: {
+    club: 'clubId',
+    dept: null,
+    deptVia: { relation: 'organizer', field: 'deptId' },
+    owner: 'organizerMemberId',
+  },
+} as const satisfies Record<string, ScopeResourceSpec>;
 
 export type ScopeResource = keyof typeof SCOPE_RESOURCES;
 
@@ -77,24 +88,33 @@ export async function buildScopeWhere(
       return where;
 
     case DataScope.DEPT_AND_BELOW: {
-      if (me.deptId === null || spec.dept === null) {
-        // 没有部门维度的人/资源，退化到仅本人，宁可严一点
+      if (me.deptId === null) {
         return { ...where, [spec.owner]: me.memberId };
       }
       const ids = await deptSubtreeIds(prisma, me.clubId, me.deptId);
-      return { ...where, [spec.dept]: { in: ids } };
+      return { ...where, ...deptFilter(spec, { in: ids }) };
     }
 
     case DataScope.DEPT: {
-      if (me.deptId === null || spec.dept === null) {
+      if (me.deptId === null) {
         return { ...where, [spec.owner]: me.memberId };
       }
-      return { ...where, [spec.dept]: me.deptId };
+      return { ...where, ...deptFilter(spec, me.deptId) };
     }
 
     default:
       return { ...where, [spec.owner]: me.memberId };
   }
+}
+
+/** 有 dept 列就直接过滤，没有就走 deptVia 的关系 */
+function deptFilter(spec: ScopeResourceSpec, value: unknown): ScopeWhere {
+  if (spec.dept !== null) return { [spec.dept]: value };
+  if (spec.deptVia !== undefined) {
+    return { [spec.deptVia.relation]: { [spec.deptVia.field]: value } };
+  }
+  // 既没有 dept 也没有 deptVia，只能退到本人，交给调用方兜底
+  return {};
 }
 
 /**
