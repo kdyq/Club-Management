@@ -186,7 +186,7 @@ design/
 1. **把 tokens 映射到 Element Plus 主题**。这里定义的 canvas / surface / border / text /
    accent / radius 会覆盖 Element Plus 的 CSS 变量，业务代码不出现任何颜色字面值。
 2. **搭建 Vue 3 + Vite + NestJS 脚手架**，按之前定好的分层建目录。
-3. **写 Prisma schema**（数据库设计已经定稿在 `docs/database-design.md`）。
+3. **写 Prisma schema**（62 张表按 P0/P1/P2 三层优先级落地）。
 4. **按方向补齐其余界面**：活动、报名签到、经费、审批、值班、通知、文件共享。
 
 ---

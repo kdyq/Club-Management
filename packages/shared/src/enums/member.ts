@@ -1,6 +1,5 @@
 /**
- * 成员相关枚举。对照 docs/database-design.md 第 7 节。
- * 数据库里存 Int，取值的唯一真相在这里。
+ * 成员相关枚举。数据库里存 Int，取值的唯一真相在这里，前后端 import 同一份。
  */
 
 export const MemberStatus = {
